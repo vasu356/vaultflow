@@ -1,0 +1,153 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: download-service
+  namespace: vaultflow
+  labels:
+    app: download-service
+    app.kubernetes.io/part-of: vaultflow
+spec:
+  replicas: 4  # Download traffic typically 3-5x upload traffic
+  selector:
+    matchLabels:
+      app: download-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: download-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: "8083"
+    spec:
+      terminationGracePeriodSeconds: 120  # Allow large downloads to complete
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values: [download-service]
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: download-service
+          image: vaultflow/download-service:1.0.0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8083
+              name: http
+          envFrom:
+            - configMapRef:
+                name: vaultflow-common-config
+            - secretRef:
+                name: vaultflow-secrets
+          env:
+            - name: JAVA_OPTS
+              value: >-
+                -XX:MaxRAMPercentage=75.0
+                -XX:+UseZGC
+                -XX:+ZGenerational
+                -Djava.security.egd=file:/dev/./urandom
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1500m"
+              memory: "1.5Gi"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8083
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8083
+            initialDelaySeconds: 20
+            periodSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8083
+            failureThreshold: 24
+            periodSeconds: 5
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            readOnlyRootFilesystem: false
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: object-storage
+              mountPath: /data/vaultflow/objects
+              readOnly: true  # Download service is read-only
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: object-storage
+          persistentVolumeClaim:
+            claimName: object-storage-pvc
+        - name: tmp
+          emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: download-service
+  namespace: vaultflow
+spec:
+  selector:
+    app: download-service
+  ports:
+    - port: 8083
+      targetPort: 8083
+      name: http
+  type: ClusterIP
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: download-service-hpa
+  namespace: vaultflow
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: download-service
+  minReplicas: 4
+  maxReplicas: 30
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: download-service-pdb
+  namespace: vaultflow
+spec:
+  minAvailable: 3
+  selector:
+    matchLabels:
+      app: download-service

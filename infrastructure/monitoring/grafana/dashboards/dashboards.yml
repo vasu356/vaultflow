@@ -1,0 +1,13 @@
+apiVersion: 1
+
+providers:
+  - name: VaultFlow Dashboards
+    orgId: 1
+    folder: VaultFlow
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: true

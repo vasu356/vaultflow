@@ -1,0 +1,69 @@
+---
+name: Feature Request
+description: Propose a new feature or improvement for VaultFlow
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+assignees: []
+---
+
+## Problem Statement
+
+<!-- Describe the problem you are trying to solve. Good features solve real problems — explain the pain point clearly.
+Example: "When I try to upload files from a browser, I have no way to verify that the presigned URL has not been tampered with." -->
+
+## Proposed Solution
+
+<!-- Describe the solution you'd like. Be as specific as possible.
+Include API sketches, configuration examples, or pseudocode if helpful. -->
+
+## Alternatives Considered
+
+<!-- Describe alternatives you have considered and why they don't fully solve the problem. -->
+
+## Impact
+
+**Who benefits from this feature?**
+- [ ] End users (clients uploading/downloading files)
+- [ ] Platform operators (admins, DevOps)
+- [ ] Developers integrating with VaultFlow API
+- [ ] Contributors to the codebase
+
+**How broadly does this affect the platform?**
+- [ ] New feature (additive, no breaking changes)
+- [ ] Improvement to existing feature
+- [ ] Breaking change (existing behavior must change)
+
+## Implementation Thoughts
+
+<!-- Optional: Do you have thoughts on how this could be implemented?
+Which service(s) would be affected? Any relevant design patterns? -->
+
+**Affected services:**
+- [ ] auth-service
+- [ ] upload-service
+- [ ] download-service
+- [ ] processing-service
+- [ ] notification-service
+- [ ] admin-service
+- [ ] metadata-service
+- [ ] common library
+- [ ] Infrastructure / NGINX
+
+**Would this require a Kafka schema change?**
+- [ ] No
+- [ ] Yes — describe the migration strategy:
+
+**Would this require a database migration?**
+- [ ] No
+- [ ] Yes — backward-compatible
+- [ ] Yes — requires coordinated deployment
+
+## Willing to Implement?
+
+- [ ] Yes, I'd like to implement this (see [CONTRIBUTING.md](../../CONTRIBUTING.md))
+- [ ] I can help review a PR for this
+- [ ] I'm requesting this but cannot implement it
+
+## Additional Context
+
+<!-- Screenshots, links to similar implementations in other projects, or any other context. -->

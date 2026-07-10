@@ -1,0 +1,211 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: vaultflow
+  labels:
+    app: auth-service
+    app.kubernetes.io/name: auth-service
+    app.kubernetes.io/part-of: vaultflow
+    version: "1.0.0"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: auth-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1          # Allow 1 extra pod during rollout
+      maxUnavailable: 0    # Never reduce capacity during rollout (zero-downtime deploy)
+  template:
+    metadata:
+      labels:
+        app: auth-service
+        version: "1.0.0"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: "8081"
+    spec:
+      # Terminate gracefully: allow in-flight requests to complete
+      terminationGracePeriodSeconds: 30
+      serviceAccountName: vaultflow-service-account
+
+      # Anti-affinity: spread pods across nodes for HA
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values: [auth-service]
+                topologyKey: kubernetes.io/hostname
+
+      containers:
+        - name: auth-service
+          image: vaultflow/auth-service:1.0.0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8081
+              name: http
+              protocol: TCP
+
+          envFrom:
+            - configMapRef:
+                name: vaultflow-common-config
+            - secretRef:
+                name: vaultflow-secrets
+
+          env:
+            - name: JAVA_OPTS
+              value: >-
+                -XX:MaxRAMPercentage=75.0
+                -XX:+UseZGC
+                -XX:+ZGenerational
+                -Djava.security.egd=file:/dev/./urandom
+                -Dspring.jmx.enabled=false
+
+          # Resource requests/limits: prevents noisy neighbour, enables scheduler decisions
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+
+          # Liveness: if this fails, pod is restarted (stuck/deadlocked process)
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8081
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 5
+
+          # Readiness: if this fails, pod is removed from Service endpoints (not receives traffic)
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            failureThreshold: 3
+            timeoutSeconds: 5
+
+          # Startup: longer tolerance during cold start (JVM init + Flyway migration)
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            failureThreshold: 24  # 24 * 5s = 120s max startup time
+
+          lifecycle:
+            preStop:
+              # Signal Spring to stop accepting new requests before pod terminates
+              exec:
+                command: ["sh", "-c", "sleep 5"]
+
+          # Security context: non-root, read-only root filesystem
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+
+      volumes:
+        - name: tmp
+          emptyDir: {}
+
+      # Prevent scheduling on nodes with known issues
+      tolerations:
+        - key: "node.kubernetes.io/not-ready"
+          operator: "Exists"
+          effect: "NoExecute"
+          tolerationSeconds: 30
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: vaultflow
+  labels:
+    app: auth-service
+spec:
+  selector:
+    app: auth-service
+  ports:
+    - port: 8081
+      targetPort: 8081
+      name: http
+      protocol: TCP
+  type: ClusterIP  # Internal only — exposed via NGINX Ingress
+
+---
+# Horizontal Pod Autoscaler: scale based on CPU and request rate
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: auth-service-hpa
+  namespace: vaultflow
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: auth-service
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60  # Scale out when CPU > 60%
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 75
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60   # Don't scale up too aggressively
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300  # Wait 5min before scaling down (avoid flapping)
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+
+---
+# PodDisruptionBudget: ensure at least 1 pod available during node drain / voluntary disruptions
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: auth-service-pdb
+  namespace: vaultflow
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: auth-service

@@ -1,0 +1,38 @@
+# CODEOWNERS
+# Defines who is automatically requested for review when changes are made to specific files.
+# Last reviewer in a matching rule wins. More specific rules override broader ones.
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global fallback — all changes require review from a maintainer
+* @your-org/vaultflow-maintainers
+
+# Security-critical code — requires security team review
+SECURITY.md                                                            @your-org/vaultflow-security
+auth-service/src/main/java/com/vaultflow/auth/config/SecurityConfig.java  @your-org/vaultflow-security
+auth-service/src/main/java/com/vaultflow/auth/service/AuthService.java    @your-org/vaultflow-security
+auth-service/src/main/java/com/vaultflow/auth/service/TokenRevocationService.java @your-org/vaultflow-security
+common/src/main/java/com/vaultflow/common/security/               @your-org/vaultflow-security
+*/src/main/java/com/vaultflow/*/config/SecurityConfig.java        @your-org/vaultflow-security
+
+# Database schema changes require DBA + platform review
+*/src/main/resources/db/migration/                                 @your-org/vaultflow-maintainers @your-org/vaultflow-dba
+infrastructure/docker/postgres-init.sql                            @your-org/vaultflow-maintainers @your-org/vaultflow-dba
+
+# Kafka event schemas — changes affect all consuming services
+common/src/main/java/com/vaultflow/common/event/                   @your-org/vaultflow-maintainers
+
+# CI/CD pipeline changes
+.github/workflows/                                                 @your-org/vaultflow-maintainers
+
+# Infrastructure and deployment
+infrastructure/kubernetes/                                         @your-org/vaultflow-platform
+infrastructure/nginx/                                              @your-org/vaultflow-platform
+docker-compose.yml                                                 @your-org/vaultflow-platform
+
+# Observability configuration
+infrastructure/monitoring/                                         @your-org/vaultflow-platform
+
+# Documentation
+docs/                                                              @your-org/vaultflow-maintainers
+README.md                                                          @your-org/vaultflow-maintainers
+ARCHITECTURE.md                                                    @your-org/vaultflow-maintainers

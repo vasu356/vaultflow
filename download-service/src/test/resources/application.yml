@@ -1,0 +1,39 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/vaultflow_test
+    username: vaultflow
+    password: vaultflow
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+  flyway:
+    enabled: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+vaultflow:
+  storage:
+    base-dir: /tmp/vaultflow-test-storage-download
+  signed-url:
+    secret: test-secret-key-for-tests-only
+  download:
+    base-url: http://localhost:8083
+  jwt:
+    issuer: vaultflow-auth
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+logging:
+  level:
+    com.vaultflow: DEBUG
+    org.springframework.security: WARN

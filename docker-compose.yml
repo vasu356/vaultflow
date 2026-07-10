@@ -1,0 +1,437 @@
+# VaultFlow Local Development Stack
+# Ports chosen to avoid conflicts with other projects:
+#   PostgreSQL  5433  |  Redis  6380  |  Kafka  9094
+#   Grafana     3001  |  Prometheus  9091  |  Jaeger  16686
+#   Services    8081-8087
+
+networks:
+  vaultflow-net:
+    driver: bridge
+    name: vaultflow-net
+
+volumes:
+  vaultflow-postgres-data:
+  vaultflow-redis-data:
+  vaultflow-kafka-data:
+  vaultflow-zookeeper-data:
+  vaultflow-object-storage:
+  vaultflow-prometheus-data:
+  vaultflow-grafana-data:
+  vaultflow-keys:
+
+services:
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: vaultflow-postgres
+    environment:
+      POSTGRES_DB: vaultflow
+      POSTGRES_USER: vaultflow
+      POSTGRES_PASSWORD: vaultflow
+    volumes:
+      - vaultflow-postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - vaultflow-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vaultflow -d vaultflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  # ── Redis ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: vaultflow-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-change-me} --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - vaultflow-redis-data:/data
+    ports:
+      - "6380:6379"
+    networks:
+      - vaultflow-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "vaultflow", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  # ── Zookeeper ─────────────────────────────────────────────────────────────
+  # NO healthcheck dependency — just start it and wait fixed time
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: vaultflow-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - vaultflow-zookeeper-data:/var/lib/zookeeper/data
+    ports:
+      - "2182:2181"
+    networks:
+      - vaultflow-net
+    restart: unless-stopped
+
+  # ── Kafka ─────────────────────────────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: vaultflow-kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_RETENTION_HOURS: 168
+    volumes:
+      - vaultflow-kafka-data:/var/lib/kafka/data
+    ports:
+      - "9094:9094"
+    networks:
+      - vaultflow-net
+    restart: unless-stopped
+
+  # ── Kafka Topic Init ──────────────────────────────────────────────────────
+  # Runs once, exits. Uses a retry loop inside the container (no depends_on health)
+  kafka-init:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: vaultflow-kafka-init
+    depends_on:
+      - kafka
+    networks:
+      - vaultflow-net
+    restart: "no"
+    entrypoint: ["/bin/bash", "-c"]
+    # NOTE: $$ escapes the dollar sign so Docker Compose does not interpolate variables
+    command:
+      - |
+        echo 'Waiting for Kafka...'
+        RETRIES=30
+        until kafka-topics --bootstrap-server kafka:9092 --list > /dev/null 2>&1; do
+          RETRIES=$$((RETRIES - 1))
+          if [ $$RETRIES -eq 0 ]; then echo 'Kafka not ready after 150s'; exit 1; fi
+          echo "Kafka not ready yet, waiting 5s ($$RETRIES retries left)..."
+          sleep 5
+        done
+        echo 'Kafka ready. Creating topics...'
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic file.uploaded            --partitions 16 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic file.uploaded.DLT        --partitions 2  --replication-factor 1
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic file.processed           --partitions 16 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic file.processing.image    --partitions 8  --replication-factor 1
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic file.processing.video    --partitions 4  --replication-factor 1
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic file.processing.document --partitions 4  --replication-factor 1
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic file.processing.virus    --partitions 8  --replication-factor 1
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic audit.events             --partitions 8  --replication-factor 1
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic audit.events.DLT         --partitions 2  --replication-factor 1
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic notification.events      --partitions 8  --replication-factor 1
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic notification.events.DLT  --partitions 2  --replication-factor 1
+        echo 'Done. Topics:'
+        kafka-topics --bootstrap-server kafka:9092 --list
+
+  # ── Jaeger ────────────────────────────────────────────────────────────────
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    container_name: vaultflow-jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    networks:
+      - vaultflow-net
+    restart: unless-stopped
+
+  # ── Prometheus ────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: vaultflow-prometheus
+    volumes:
+      - ./infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - vaultflow-prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+    ports:
+      - "9091:9090"
+    networks:
+      - vaultflow-net
+    restart: unless-stopped
+
+  # ── Grafana ───────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.3
+    container_name: vaultflow-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - vaultflow-grafana-data:/var/lib/grafana
+      - ./infrastructure/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./infrastructure/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - vaultflow-net
+    restart: unless-stopped
+
+  # ── Application Services ──────────────────────────────────────────────────
+  # All services depend on postgres/redis healthy + kafka started (no health condition)
+  # They use Spring retry/resilience4j to handle Kafka not being fully ready
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
+    container_name: vaultflow-auth
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/vaultflow
+      DB_USERNAME: vaultflow
+      DB_PASSWORD: vaultflow
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change-me}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      ENVIRONMENT: local
+      VAULTFLOW_JWT_PRIVATE_KEY_PATH: /keys/private.pem
+      VAULTFLOW_JWT_PUBLIC_KEY_PATH: /keys/public.pem
+      JAVA_OPTS: "-Xmx512m -Xms128m -XX:+UseZGC -Djava.security.egd=file:/dev/./urandom"
+    ports:
+      - "8081:8081"
+    networks:
+      - vaultflow-net
+    restart: unless-stopped
+    volumes:
+      - vaultflow-object-storage:/data/vaultflow/objects
+      - ./keys:/keys:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8081/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+  upload-service:
+    build:
+      context: .
+      dockerfile: upload-service/Dockerfile
+    container_name: vaultflow-upload
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/vaultflow
+      DB_USERNAME: vaultflow
+      DB_PASSWORD: vaultflow
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change-me}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      STORAGE_BASE_DIR: /data/vaultflow/objects
+      ENVIRONMENT: local
+      VAULTFLOW_JWT_PUBLIC_KEY_PATH: /keys/public.pem
+      JAVA_OPTS: "-Xmx768m -Xms128m -XX:+UseZGC -Djava.security.egd=file:/dev/./urandom"
+    ports:
+      - "8082:8082"
+    networks:
+      - vaultflow-net
+    restart: unless-stopped
+    volumes:
+      - vaultflow-object-storage:/data/vaultflow/objects
+      - ./keys:/keys:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8082/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+  download-service:
+    build:
+      context: .
+      dockerfile: download-service/Dockerfile
+    container_name: vaultflow-download
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/vaultflow
+      DB_USERNAME: vaultflow
+      DB_PASSWORD: vaultflow
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change-me}
+      STORAGE_BASE_DIR: /data/vaultflow/objects
+      SIGNED_URL_SECRET: local-dev-secret-change-in-production
+      DOWNLOAD_BASE_URL: http://localhost:8083
+      ENVIRONMENT: local
+      VAULTFLOW_JWT_PUBLIC_KEY_PATH: /keys/public.pem
+      JAVA_OPTS: "-Xmx512m -Xms128m -XX:+UseZGC -Djava.security.egd=file:/dev/./urandom"
+    ports:
+      - "8083:8083"
+    networks:
+      - vaultflow-net
+    restart: unless-stopped
+    volumes:
+      - vaultflow-object-storage:/data/vaultflow/objects
+      - ./keys:/keys:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8083/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+  metadata-service:
+    build:
+      context: .
+      dockerfile: metadata-service/Dockerfile
+    container_name: vaultflow-metadata
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/vaultflow
+      DB_USERNAME: vaultflow
+      DB_PASSWORD: vaultflow
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change-me}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      ENVIRONMENT: local
+      VAULTFLOW_JWT_PUBLIC_KEY_PATH: /keys/public.pem
+      JAVA_OPTS: "-Xmx512m -Xms128m -XX:+UseZGC -Djava.security.egd=file:/dev/./urandom"
+    ports:
+      - "8084:8084"
+    networks:
+      - vaultflow-net
+    restart: unless-stopped
+    volumes:
+      - ./keys:/keys:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8084/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+  processing-service:
+    build:
+      context: .
+      dockerfile: processing-service/Dockerfile
+    container_name: vaultflow-processing
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/vaultflow
+      DB_USERNAME: vaultflow
+      DB_PASSWORD: vaultflow
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      STORAGE_BASE_DIR: /data/vaultflow/objects
+      ENVIRONMENT: local
+      VAULTFLOW_JWT_PUBLIC_KEY_PATH: /keys/public.pem
+      JAVA_OPTS: "-Xmx512m -Xms128m -XX:+UseZGC -Djava.security.egd=file:/dev/./urandom"
+    ports:
+      - "8085:8085"
+    networks:
+      - vaultflow-net
+    restart: unless-stopped
+    volumes:
+      - vaultflow-object-storage:/data/vaultflow/objects
+      - ./keys:/keys:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8085/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+    container_name: vaultflow-notification
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/vaultflow
+      DB_USERNAME: vaultflow
+      DB_PASSWORD: vaultflow
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      ENVIRONMENT: local
+      JAVA_OPTS: "-Xmx256m -Xms64m -XX:+UseZGC -Djava.security.egd=file:/dev/./urandom"
+    ports:
+      - "8086:8086"
+    networks:
+      - vaultflow-net
+    restart: unless-stopped
+    volumes:
+      - ./keys:/keys:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8086/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+  admin-service:
+    build:
+      context: .
+      dockerfile: admin-service/Dockerfile
+    container_name: vaultflow-admin
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/vaultflow
+      DB_USERNAME: vaultflow
+      DB_PASSWORD: vaultflow
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change-me}
+      ENVIRONMENT: local
+      VAULTFLOW_JWT_PUBLIC_KEY_PATH: /keys/public.pem
+      JAVA_OPTS: "-Xmx256m -Xms64m -XX:+UseZGC -Djava.security.egd=file:/dev/./urandom"
+    ports:
+      - "8087:8087"
+    networks:
+      - vaultflow-net
+    restart: unless-stopped
+    volumes:
+      - ./keys:/keys:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8087/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s

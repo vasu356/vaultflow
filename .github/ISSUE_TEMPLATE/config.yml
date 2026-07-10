@@ -1,0 +1,15 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: Ask a Question
+    url: https://github.com/your-org/vaultflow/discussions/categories/q-a
+    about: Have a question about VaultFlow? Start a Discussion — not an issue.
+  - name: Share an Idea
+    url: https://github.com/your-org/vaultflow/discussions/categories/ideas
+    about: Want to discuss a feature or improvement before filing a formal request?
+  - name: Security Vulnerability
+    url: mailto:security@vaultflow.io
+    about: Please report security vulnerabilities privately via email, not as GitHub issues.
+  - name: Documentation
+    url: https://github.com/your-org/vaultflow/tree/main/docs
+    about: Check the documentation before opening an issue — your question may already be answered.

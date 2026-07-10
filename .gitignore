@@ -1,0 +1,53 @@
+# Maven
+target/
+*.class
+
+# IDE
+.idea/
+.vscode/
+.project
+.classpath
+.settings/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Runtime
+*.pid
+
+# Environment
+.env
+.env.*
+*.env
+
+# Test artifacts
+login.json
+register.json
+bucket.json
+sample.txt
+
+# Generated files
+effective-pom.xml
+dependency-tree.txt
+build.log
+compose-build.log
+
+# Keys
+keys/private.pem
+keys/public.pem
+*.jks
+*.p12
+*.pfx
+
+# Coverage
+coverage/
+
+# Docker runtime
+data/
+.vscode/

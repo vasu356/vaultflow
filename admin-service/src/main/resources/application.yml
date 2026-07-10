@@ -1,0 +1,42 @@
+server:
+  port: 8087
+  shutdown: graceful
+spring:
+  application:
+    name: admin-service
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/vaultflow}
+    username: ${DB_USERNAME:vaultflow}
+    password: ${DB_PASSWORD:vaultflow}
+    hikari:
+      pool-name: AdminHikariPool
+      maximum-pool-size: 10
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+vaultflow:
+  jwt:
+    issuer: vaultflow-auth
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+logging:
+  level:
+    com.vaultflow: DEBUG
+

@@ -1,0 +1,304 @@
+name: VaultFlow CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  JAVA_VERSION: '21'
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/vaultflow
+
+jobs:
+  # ============================================================
+  # Stage 1: Code Quality
+  # ============================================================
+  quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+
+      - name: Check formatting (Spotless)
+        run: mvn spotless:check -q
+
+      - name: Run Checkstyle
+        run: mvn checkstyle:check -q
+
+  # ============================================================
+  # Stage 2: Unit Tests
+  # ============================================================
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+
+      - name: Run unit tests
+        run: |
+          mvn test \
+            -Dsurefire.failIfNoSpecifiedTests=false \
+            --batch-mode \
+            -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+
+      - name: Upload unit test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-results
+          path: "**/target/surefire-reports/*.xml"
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: "**/target/site/jacoco/"
+
+      - name: Coverage check (80% minimum)
+        run: mvn jacoco:check -q
+
+  # ============================================================
+  # Stage 3: Integration Tests (Testcontainers)
+  # ============================================================
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    services:
+      # Testcontainers manages its own containers — these are just for reference
+      docker:
+        image: docker:dind
+        options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+
+      - name: Run integration tests (Testcontainers)
+        run: |
+          mvn verify \
+            -Pfailsafe \
+            --batch-mode \
+            -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: false
+          DOCKER_HOST: unix:///var/run/docker.sock
+
+      - name: Upload integration test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: "**/target/failsafe-reports/*.xml"
+
+  # ============================================================
+  # Stage 4: Security Scan
+  # ============================================================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner (filesystem)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: 1
+          format: sarif
+          output: trivy-results.sarif
+
+      - name: Upload security results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+
+      - name: OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: vaultflow
+          path: .
+          format: HTML
+          args: --failOnCVSS 7 --enableRetired
+
+  # ============================================================
+  # Stage 5: Build & Push Docker Images
+  # Only runs on pushes to main/develop (not PRs)
+  # ============================================================
+  build-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, security-scan]
+    if: github.event_name == 'push'
+    strategy:
+      matrix:
+        service:
+          - auth-service
+          - upload-service
+          - download-service
+          - processing-service
+          - notification-service
+          - admin-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.service }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+      - name: Scan pushed image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:${{ github.sha }}
+          severity: CRITICAL
+          exit-code: 1
+
+  # ============================================================
+  # Stage 6: Deploy to Staging
+  # ============================================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-images
+    if: github.ref == 'refs/heads/develop'
+    environment:
+      name: staging
+      url: https://staging-api.vaultflow.io
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure kubectl
+        uses: azure/k8s-set-context@v3
+        with:
+          kubeconfig: ${{ secrets.KUBE_CONFIG_STAGING }}
+
+      - name: Deploy to staging namespace
+        run: |
+          IMAGE_TAG="${{ github.sha }}"
+          
+          for service in auth-service upload-service download-service processing-service notification-service admin-service; do
+            kubectl set image deployment/$service \
+              $service=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/$service:$IMAGE_TAG \
+              -n vaultflow-staging
+          done
+
+      - name: Wait for rollout
+        run: |
+          for service in auth-service upload-service download-service processing-service notification-service admin-service; do
+            kubectl rollout status deployment/$service -n vaultflow-staging --timeout=300s
+          done
+
+      - name: Run smoke tests against staging
+        run: |
+          # Wait for services to be ready
+          sleep 30
+          # Health check all services
+          curl -sf https://staging-api.vaultflow.io/health || exit 1
+          echo "Smoke tests passed"
+
+  # ============================================================
+  # Stage 7: Deploy to Production
+  # ============================================================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-images
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://api.vaultflow.io
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure kubectl
+        uses: azure/k8s-set-context@v3
+        with:
+          kubeconfig: ${{ secrets.KUBE_CONFIG_PRODUCTION }}
+
+      - name: Deploy with rolling update
+        run: |
+          IMAGE_TAG="${{ github.sha }}"
+          
+          for service in auth-service upload-service download-service processing-service notification-service admin-service; do
+            echo "Deploying $service with image tag $IMAGE_TAG"
+            kubectl set image deployment/$service \
+              $service=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/$service:$IMAGE_TAG \
+              -n vaultflow
+          done
+
+      - name: Monitor rolling update
+        run: |
+          for service in auth-service upload-service download-service processing-service notification-service admin-service; do
+            echo "Waiting for $service rollout..."
+            kubectl rollout status deployment/$service -n vaultflow --timeout=600s
+            echo "$service rolled out successfully"
+          done
+
+      - name: Production smoke tests
+        run: |
+          sleep 30
+          curl -sf https://api.vaultflow.io/health || exit 1
+          echo "Production smoke tests passed"
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deployment failed — rolling back all services"
+          for service in auth-service upload-service download-service processing-service notification-service admin-service; do
+            kubectl rollout undo deployment/$service -n vaultflow
+          done
+          echo "Rollback complete"

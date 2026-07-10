@@ -1,0 +1,29 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+  flyway:
+    enabled: false
+  kafka:
+    bootstrap-servers: localhost:9999  # Unused in unit tests
+
+vaultflow:
+  storage:
+    base-dir: /tmp/vaultflow-test-storage-processing
+  processing:
+    pool-size: 2
+    virus-scan:
+      max-file-size-bytes: 104857600
+
+logging:
+  level:
+    com.vaultflow: DEBUG

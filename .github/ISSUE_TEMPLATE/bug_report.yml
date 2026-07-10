@@ -1,0 +1,83 @@
+---
+name: Bug Report
+description: Report a reproducible bug in VaultFlow
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+assignees: []
+---
+
+## Bug Description
+
+<!-- A clear and concise description of what the bug is. -->
+
+## Steps to Reproduce
+
+1. Start VaultFlow with `docker-compose up -d`
+2. Call `...`
+3. Observe `...`
+
+## Expected Behavior
+
+<!-- What you expected to happen. -->
+
+## Actual Behavior
+
+<!-- What actually happened. Include error messages, status codes, and any relevant output. -->
+
+## Minimal Reproduction
+
+<!-- If possible, provide a minimal curl command or code snippet that reproduces the issue. -->
+
+```bash
+# Example:
+curl -X POST http://localhost:80/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com", "password": "..."}'
+```
+
+## Logs
+
+<!-- Paste relevant service logs. Redact any sensitive data (tokens, passwords, PII). -->
+
+<details>
+<summary>Service logs</summary>
+
+```
+docker-compose logs <service-name> | tail -50
+```
+
+</details>
+
+## Environment
+
+| Field | Value |
+|---|---|
+| VaultFlow version / commit SHA | |
+| Docker version | `docker --version` |
+| Docker Compose version | `docker compose version` |
+| OS / Platform | e.g., macOS 14.5, Ubuntu 22.04, Windows 11 WSL2 |
+| Java version (if running outside Docker) | `java -version` |
+| Deployment type | Docker Compose / Kubernetes / standalone JVM |
+
+## Affected Service(s)
+
+- [ ] auth-service
+- [ ] upload-service
+- [ ] download-service
+- [ ] processing-service
+- [ ] notification-service
+- [ ] admin-service
+- [ ] metadata-service
+- [ ] NGINX gateway
+- [ ] Infrastructure (Kafka / PostgreSQL / Redis)
+
+## Severity
+
+- [ ] **Critical** — data loss, security issue, or platform is completely down
+- [ ] **High** — core feature broken, no workaround
+- [ ] **Medium** — feature partially broken, workaround exists
+- [ ] **Low** — cosmetic issue, minor inconvenience
+
+## Additional Context
+
+<!-- Any other context that might be useful: related issues, recent changes, etc. -->

@@ -1,0 +1,49 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    platform: vaultflow
+    environment: local
+
+scrape_configs:
+  - job_name: auth-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['auth-service:8081']
+        labels: {service: auth-service}
+
+  - job_name: upload-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['upload-service:8082']
+        labels: {service: upload-service}
+
+  - job_name: download-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['download-service:8083']
+        labels: {service: download-service}
+
+  - job_name: metadata-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['metadata-service:8084']
+        labels: {service: metadata-service}
+
+  - job_name: processing-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['processing-service:8085']
+        labels: {service: processing-service}
+
+  - job_name: notification-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['notification-service:8086']
+        labels: {service: notification-service}
+
+  - job_name: admin-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['admin-service:8087']
+        labels: {service: admin-service}

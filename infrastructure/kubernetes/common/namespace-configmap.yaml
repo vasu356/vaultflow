@@ -1,0 +1,25 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vaultflow
+  labels:
+    app.kubernetes.io/part-of: vaultflow
+    environment: production
+
+---
+# Shared non-sensitive config. Secrets (passwords, keys) live in K8s Secrets, never here.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vaultflow-common-config
+  namespace: vaultflow
+data:
+  KAFKA_BOOTSTRAP_SERVERS: "kafka.vaultflow-infra.svc.cluster.local:9092"
+  REDIS_HOST: "redis.vaultflow-infra.svc.cluster.local"
+  REDIS_PORT: "6379"
+  DB_URL: "jdbc:postgresql://postgres.vaultflow-infra.svc.cluster.local:5432/vaultflow"
+  DB_USERNAME: "vaultflow"
+  STORAGE_BASE_DIR: "/data/vaultflow/objects"
+  ENVIRONMENT: "production"
+  DOWNLOAD_BASE_URL: "https://api.vaultflow.io"
