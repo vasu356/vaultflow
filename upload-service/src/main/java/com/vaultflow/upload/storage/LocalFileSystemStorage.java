@@ -14,18 +14,16 @@ import org.springframework.stereotype.Component;
 /**
  * Local filesystem implementation of {@link ObjectStoragePort}.
  *
- * <p>Production considerations:
- * - Objects stored in content-addressed layout: {base}/{hash[0:3]}/{hash[3:6]}/{full-hash}
- * - Parts stored under: {base}/tmp/sessions/{sessionId}/part_{number}
- * - Atomic writes via temp file + rename (prevents partial reads during concurrent access)
- * - Pre-allocates directory structure to prevent inode exhaustion
+ * <p>Production considerations: - Objects stored in content-addressed layout:
+ * {base}/{hash[0:3]}/{hash[3:6]}/{full-hash} - Parts stored under:
+ * {base}/tmp/sessions/{sessionId}/part_{number} - Atomic writes via temp file + rename (prevents
+ * partial reads during concurrent access) - Pre-allocates directory structure to prevent inode
+ * exhaustion
  *
- * <p>Limitations vs S3:
- * - Single machine — not distributed, not replicated
- * - No built-in redundancy
+ * <p>Limitations vs S3: - Single machine — not distributed, not replicated - No built-in redundancy
  *
- * <p>Swap path: Replace this bean with S3CompatibleStorage for production cloud deployments.
- * The ObjectStoragePort interface hides all S3-specific API — zero business logic changes needed.
+ * <p>Swap path: Replace this bean with S3CompatibleStorage for production cloud deployments. The
+ * ObjectStoragePort interface hides all S3-specific API — zero business logic changes needed.
  */
 @Component
 @Slf4j
@@ -84,14 +82,19 @@ public class LocalFileSystemStorage implements ObjectStoragePort {
 
     try {
       Files.createDirectories(partPath.getParent());
-      try (OutputStream out = Files.newOutputStream(partPath, StandardOpenOption.CREATE,
-          StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
+      try (OutputStream out =
+          Files.newOutputStream(
+              partPath,
+              StandardOpenOption.CREATE,
+              StandardOpenOption.WRITE,
+              StandardOpenOption.TRUNCATE_EXISTING)) {
         IOUtils.copyLarge(data, out);
       }
       log.debug("Stored part sessionId={} partNumber={}", sessionId, partNumber);
       return partKey;
     } catch (IOException e) {
-      throw new StorageException("Failed to store part " + partNumber + " for session " + sessionId, e);
+      throw new StorageException(
+          "Failed to store part " + partNumber + " for session " + sessionId, e);
     }
   }
 
@@ -102,11 +105,13 @@ public class LocalFileSystemStorage implements ObjectStoragePort {
 
     try {
       Files.createDirectories(targetPath.getParent());
-      Path tempFile = targetPath.getParent().resolve("." + targetPath.getFileName() + ".assembling");
+      Path tempFile =
+          targetPath.getParent().resolve("." + targetPath.getFileName() + ".assembling");
 
       long totalBytes = 0;
-      try (OutputStream out = new BufferedOutputStream(
-          Files.newOutputStream(tempFile, StandardOpenOption.CREATE_NEW), 1024 * 1024)) {
+      try (OutputStream out =
+          new BufferedOutputStream(
+              Files.newOutputStream(tempFile, StandardOpenOption.CREATE_NEW), 1024 * 1024)) {
         for (String partKey : partKeys) {
           Path partPath = sessionDir.resolve(partKey);
           if (!Files.exists(partPath)) {
@@ -126,7 +131,11 @@ public class LocalFileSystemStorage implements ObjectStoragePort {
       }
       Files.deleteIfExists(sessionDir);
 
-      log.info("Assembled {} parts for storageKey={}, totalBytes={}", partKeys.size(), storageKey, totalBytes);
+      log.info(
+          "Assembled {} parts for storageKey={}, totalBytes={}",
+          partKeys.size(),
+          storageKey,
+          totalBytes);
       meterRegistry.counter("storage.bytes.written").increment(totalBytes);
       return totalBytes;
 

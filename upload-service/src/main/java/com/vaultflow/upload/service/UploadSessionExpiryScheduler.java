@@ -9,9 +9,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Periodic job to expire stale upload sessions.
- * Sessions that were initiated or in-progress but never completed within 24 hours
- * are marked EXPIRED. Their parts are cleaned up separately by a storage GC job.
+ * Periodic job to expire stale upload sessions. Sessions that were initiated or in-progress but
+ * never completed within 24 hours are marked EXPIRED. Their parts are cleaned up separately by a
+ * storage GC job.
  */
 @Component
 @RequiredArgsConstructor

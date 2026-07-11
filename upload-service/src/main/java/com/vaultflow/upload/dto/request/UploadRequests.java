@@ -8,9 +8,11 @@ public final class UploadRequests {
   private UploadRequests() {}
 
   public record CreateBucketRequest(
-      @NotBlank @Pattern(regexp = "^[a-z0-9][a-z0-9\\-]{1,61}[a-z0-9]$",
-          message = "Bucket name must be 3-63 lowercase alphanumeric chars or hyphens")
-      String name,
+      @NotBlank
+          @Pattern(
+              regexp = "^[a-z0-9][a-z0-9\\-]{1,61}[a-z0-9]$",
+              message = "Bucket name must be 3-63 lowercase alphanumeric chars or hyphens")
+          String name,
       String region,
       Boolean versioningEnabled) {}
 
@@ -24,8 +26,7 @@ public final class UploadRequests {
   public record CompleteUploadRequest(List<Integer> partNumbers) {}
 
   public record UpdateObjectMetadataRequest(
-      java.util.Map<String, String> metadata,
-      java.util.Map<String, String> tags) {}
+      java.util.Map<String, String> metadata, java.util.Map<String, String> tags) {}
 
   public record CreateSignedUrlRequest(
       @NotNull UUID objectVersionId,

@@ -29,14 +29,17 @@ public class BucketService {
       throw new ConflictException("Bucket already exists: " + req.name());
     }
 
-    Bucket bucket = bucketRepository.save(Bucket.builder()
-        .orgId(orgId)
-        .name(req.name())
-        .region(req.region() != null ? req.region() : "ap-south-1")
-        .versioningEnabled(Boolean.TRUE.equals(req.versioningEnabled()))
-        .build());
+    Bucket bucket =
+        bucketRepository.save(
+            Bucket.builder()
+                .orgId(orgId)
+                .name(req.name())
+                .region(req.region() != null ? req.region() : "ap-south-1")
+                .versioningEnabled(Boolean.TRUE.equals(req.versioningEnabled()))
+                .build());
 
-    log.info("Bucket created: bucketId={} name={} orgId={}", bucket.getId(), bucket.getName(), orgId);
+    log.info(
+        "Bucket created: bucketId={} name={} orgId={}", bucket.getId(), bucket.getName(), orgId);
     return toResponse(bucket);
   }
 
@@ -63,14 +66,20 @@ public class BucketService {
   }
 
   private Bucket validateAndGetBucket(UUID bucketId, String orgId) {
-    return bucketRepository.findByIdAndOrgId(bucketId, UUID.fromString(orgId))
+    return bucketRepository
+        .findByIdAndOrgId(bucketId, UUID.fromString(orgId))
         .orElseThrow(() -> new ResourceNotFoundException("Bucket", bucketId.toString()));
   }
 
   private BucketResponse toResponse(Bucket b) {
     return BucketResponse.builder()
-        .id(b.getId()).orgId(b.getOrgId()).name(b.getName())
-        .region(b.getRegion()).versioningEnabled(b.getVersioningEnabled())
-        .status(b.getStatus()).createdAt(b.getCreatedAt()).build();
+        .id(b.getId())
+        .orgId(b.getOrgId())
+        .name(b.getName())
+        .region(b.getRegion())
+        .versioningEnabled(b.getVersioningEnabled())
+        .status(b.getStatus())
+        .createdAt(b.getCreatedAt())
+        .build();
   }
 }

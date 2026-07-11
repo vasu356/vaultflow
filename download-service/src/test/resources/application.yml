@@ -5,7 +5,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/vaultflow_test
     username: vaultflow
-    password: vaultflow
+    password: ${DB_PASSWORD:#{null}}
   jpa:
     hibernate:
       ddl-auto: none

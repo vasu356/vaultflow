@@ -78,12 +78,19 @@ class AuthServiceTest {
           new RegisterOrganizationRequest(
               "Acme Corp", "acme-corp", "Alice Admin", "alice@acme.com", "Password1!");
 
-      Organization savedOrg = Organization.builder()
-          .id(UUID.randomUUID()).name("Acme Corp").slug("acme-corp").build();
-      User savedUser = User.builder()
-          .id(UUID.randomUUID()).organization(savedOrg).email("alice@acme.com")
-          .passwordHash("hash").fullName("Alice Admin").role(UserRole.OWNER)
-          .status(UserStatus.ACTIVE).emailVerified(false).build();
+      Organization savedOrg =
+          Organization.builder().id(UUID.randomUUID()).name("Acme Corp").slug("acme-corp").build();
+      User savedUser =
+          User.builder()
+              .id(UUID.randomUUID())
+              .organization(savedOrg)
+              .email("alice@acme.com")
+              .passwordHash("hash")
+              .fullName("Alice Admin")
+              .role(UserRole.OWNER)
+              .status(UserStatus.ACTIVE)
+              .emailVerified(false)
+              .build();
 
       when(orgRepository.existsBySlug("acme-corp")).thenReturn(false);
       when(orgRepository.save(any(Organization.class))).thenReturn(savedOrg);
@@ -145,10 +152,18 @@ class AuthServiceTest {
     void setup() {
       org = Organization.builder().id(UUID.randomUUID()).name("Acme").slug("acme").build();
       String hash = passwordEncoder.encode("Password1!");
-      user = User.builder()
-          .id(UUID.randomUUID()).organization(org).email("alice@acme.com")
-          .passwordHash(hash).fullName("Alice").role(UserRole.EDITOR)
-          .status(UserStatus.ACTIVE).failedLoginCount(0).emailVerified(true).build();
+      user =
+          User.builder()
+              .id(UUID.randomUUID())
+              .organization(org)
+              .email("alice@acme.com")
+              .passwordHash(hash)
+              .fullName("Alice")
+              .role(UserRole.EDITOR)
+              .status(UserStatus.ACTIVE)
+              .failedLoginCount(0)
+              .emailVerified(true)
+              .build();
     }
 
     @Test
@@ -183,7 +198,9 @@ class AuthServiceTest {
               () -> authService.login(new LoginRequest("alice@acme.com", "WrongPass!"), "10.0.0.1"))
           .isInstanceOf(VaultFlowException.class)
           .satisfies(
-              e -> assertThat(((VaultFlowException) e).getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED));
+              e ->
+                  assertThat(((VaultFlowException) e).getStatus())
+                      .isEqualTo(HttpStatus.UNAUTHORIZED));
 
       // Verify failed count incremented
       ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
@@ -214,7 +231,8 @@ class AuthServiceTest {
       when(userRepository.findActiveByEmail(any(), any())).thenReturn(Optional.empty());
 
       assertThatThrownBy(
-              () -> authService.login(new LoginRequest("nobody@acme.com", "Password1!"), "127.0.0.1"))
+              () ->
+                  authService.login(new LoginRequest("nobody@acme.com", "Password1!"), "127.0.0.1"))
           .isInstanceOf(VaultFlowException.class)
           .hasMessageContaining("Invalid credentials");
     }
@@ -231,32 +249,46 @@ class AuthServiceTest {
     @Test
     @DisplayName("revokes entire family when already-revoked token is reused")
     void detectsTokenTheft() {
-      Organization org = Organization.builder().id(UUID.randomUUID()).slug("acme").name("Acme").build();
-      User user = User.builder().id(UUID.randomUUID()).organization(org)
-          .email("alice@acme.com").fullName("Alice").role(UserRole.VIEWER)
-          .status(UserStatus.ACTIVE).emailVerified(true).build();
+      Organization org =
+          Organization.builder().id(UUID.randomUUID()).slug("acme").name("Acme").build();
+      User user =
+          User.builder()
+              .id(UUID.randomUUID())
+              .organization(org)
+              .email("alice@acme.com")
+              .fullName("Alice")
+              .role(UserRole.VIEWER)
+              .status(UserStatus.ACTIVE)
+              .emailVerified(true)
+              .build();
 
       String rawToken = "stolen-refresh-token";
       String hash = ChecksumUtil.sha256Hex(rawToken);
 
-      RefreshToken revokedToken = RefreshToken.builder()
-          .id(UUID.randomUUID()).user(user).tokenHash(hash)
-          .familyId(UUID.randomUUID()).revoked(true)
-          .expiresAt(Instant.now().plusSeconds(3600)).build();
+      RefreshToken revokedToken =
+          RefreshToken.builder()
+              .id(UUID.randomUUID())
+              .user(user)
+              .tokenHash(hash)
+              .familyId(UUID.randomUUID())
+              .revoked(true)
+              .expiresAt(Instant.now().plusSeconds(3600))
+              .build();
 
-      when(refreshTokenRepository.findByTokenHash(hash))
-          .thenReturn(Optional.of(revokedToken));
+      when(refreshTokenRepository.findByTokenHash(hash)).thenReturn(Optional.of(revokedToken));
 
       assertThatThrownBy(
-              () -> authService.refreshToken(
-                  new com.vaultflow.auth.dto.request.AuthRequests.RefreshTokenRequest(rawToken),
-                  "10.0.0.1"))
+              () ->
+                  authService.refreshToken(
+                      new com.vaultflow.auth.dto.request.AuthRequests.RefreshTokenRequest(rawToken),
+                      "10.0.0.1"))
           .isInstanceOf(VaultFlowException.class)
           .satisfies(
               e -> assertThat(((VaultFlowException) e).getErrorCode()).isEqualTo("TOKEN_REUSE"));
 
-      verify(refreshTokenRepository).revokeFamily(
-          eq(revokedToken.getFamilyId()), any(Instant.class), eq("TOKEN_REUSE_DETECTED"));
+      verify(refreshTokenRepository)
+          .revokeFamily(
+              eq(revokedToken.getFamilyId()), any(Instant.class), eq("TOKEN_REUSE_DETECTED"));
     }
   }
 }

@@ -10,9 +10,16 @@ public final class UploadResponses {
 
   @Builder
   public record UploadResponse(
-      UUID objectId, UUID versionId, String objectKey, String storageKey,
-      long sizeBytes, String checksumSha256, String etag, String contentType,
-      boolean isDuplicate, Instant uploadedAt) {}
+      UUID objectId,
+      UUID versionId,
+      String objectKey,
+      String storageKey,
+      long sizeBytes,
+      String checksumSha256,
+      String etag,
+      String contentType,
+      boolean isDuplicate,
+      Instant uploadedAt) {}
 
   @Builder
   public record InitiateUploadResponse(
@@ -20,27 +27,50 @@ public final class UploadResponses {
 
   @Builder
   public record PartUploadResponse(
-      UUID sessionId, int partNumber, long sizeBytes,
-      String checksumSha256, String etag, long receivedPartsCount) {}
+      UUID sessionId,
+      int partNumber,
+      long sizeBytes,
+      String checksumSha256,
+      String etag,
+      long receivedPartsCount) {}
 
   @Builder
   public record UploadStatusResponse(
-      UUID sessionId, String status, String objectKey, UUID bucketId,
-      Integer totalParts, int receivedParts, List<Integer> receivedPartNumbers,
+      UUID sessionId,
+      String status,
+      String objectKey,
+      UUID bucketId,
+      Integer totalParts,
+      int receivedParts,
+      List<Integer> receivedPartNumbers,
       Instant expiresAt) {}
 
   @Builder
   public record BucketResponse(
-      UUID id, UUID orgId, String name, String region,
-      boolean versioningEnabled, String status, Instant createdAt) {}
+      UUID id,
+      UUID orgId,
+      String name,
+      String region,
+      boolean versioningEnabled,
+      String status,
+      Instant createdAt) {}
 
   @Builder
   public record ObjectResponse(
-      UUID id, UUID bucketId, String objectKey, String contentType,
-      UUID currentVersionId, boolean isDeleted, Instant createdAt) {}
+      UUID id,
+      UUID bucketId,
+      String objectKey,
+      String contentType,
+      UUID currentVersionId,
+      boolean isDeleted,
+      Instant createdAt) {}
 
   @Builder
   public record SignedUrlResponse(
-      UUID id, String url, String token, Instant expiresAt,
-      Integer maxDownloads, Instant createdAt) {}
+      UUID id,
+      String url,
+      String token,
+      Instant expiresAt,
+      Integer maxDownloads,
+      Instant createdAt) {}
 }

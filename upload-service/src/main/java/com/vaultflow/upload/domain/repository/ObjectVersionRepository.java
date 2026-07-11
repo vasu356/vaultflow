@@ -25,7 +25,9 @@ public interface ObjectVersionRepository extends JpaRepository<ObjectVersion, UU
 
   /** Unmark all previous versions when a new one is uploaded. */
   @Modifying
-  @Query("UPDATE ObjectVersion v SET v.isLatest = false WHERE v.objectId = :objectId AND v.isLatest = true")
+  @Query(
+      "UPDATE ObjectVersion v"
+          + " SET v.isLatest = false WHERE v.objectId = :objectId AND v.isLatest = true")
   void markAllNotLatest(@Param("objectId") UUID objectId);
 
   @Query("SELECT COUNT(v) FROM ObjectVersion v WHERE v.storageKey = :storageKey")

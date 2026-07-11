@@ -7,7 +7,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -23,8 +22,8 @@ import org.springframework.stereotype.Service;
  * independent — image thumbnail failure does not block virus scan. Results are collected and
  * published to {@code file.processed} topic.
  *
- * <p>Why parallel? Processing a 50 MB video: virus scan (2s) + thumbnail (1s) run concurrently =
- * 2s total. Sequential would be 3s. At scale, this matters significantly.
+ * <p>Why parallel? Processing a 50 MB video: virus scan (2s) + thumbnail (1s) run concurrently = 2s
+ * total. Sequential would be 3s. At scale, this matters significantly.
  *
  * <p>Why bounded executor? Prevents unbounded memory growth if Kafka delivers faster than
  * processors complete. Backpressure flows naturally — when the pool is saturated, consumer.poll()
@@ -93,33 +92,39 @@ public class ProcessingOrchestrator {
     futures.add(runAsync(() -> metadataExtractionProcessor.process(event)));
 
     // Wait for all processors and collect results
-    List<FileProcessedEvent> results = futures.stream()
-        .map(CompletableFuture::join) // join (not get) — propagates unchecked exceptions
-        .toList();
+    List<FileProcessedEvent> results =
+        futures.stream()
+            .map(CompletableFuture::join) // join (not get) — propagates unchecked exceptions
+            .toList();
 
     // Persist results to DB (update processing_status, thumbnail_key, virus_scan_status)
     persistenceService.persistResults(event.objectVersionId(), results);
 
     // Publish each result event for downstream consumers (notification-service)
-    results.forEach(result ->
-        kafkaTemplate.send(TOPIC_FILE_PROCESSED, event.objectId(), result));
+    results.forEach(result -> kafkaTemplate.send(TOPIC_FILE_PROCESSED, event.objectId(), result));
 
-    timer.stop(meterRegistry.timer("processing.pipeline.duration",
-        "contentType", event.contentType() != null ? event.contentType().split("/")[0] : "unknown"));
+    timer.stop(
+        meterRegistry.timer(
+            "processing.pipeline.duration",
+            "contentType",
+            event.contentType() != null ? event.contentType().split("/")[0] : "unknown"));
 
     meterRegistry.counter("processing.pipeline.completed").increment();
   }
 
   private CompletableFuture<FileProcessedEvent> runAsync(
       java.util.concurrent.Callable<FileProcessedEvent> processor) {
-    return CompletableFuture.supplyAsync(() -> {
-      try {
-        return processor.call();
-      } catch (Exception e) {
-        // Individual processor failure is captured, not propagated, to allow other processors to continue
-        log.error("Processor failed: {}", e.getMessage(), e);
-        throw new RuntimeException(e);
-      }
-    }, processingExecutor);
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try {
+            return processor.call();
+          } catch (Exception e) {
+            // Individual processor failure is captured, not propagated, to allow other processors
+            // to continue
+            log.error("Processor failed: {}", e.getMessage(), e);
+            throw new RuntimeException(e);
+          }
+        },
+        processingExecutor);
   }
 }

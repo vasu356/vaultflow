@@ -109,7 +109,7 @@ export function setup() {
     organizationSlug: `loadtest-${Date.now()}`,
     fullName: 'Load Tester',
     email: `loadtest+${Date.now()}@example.com`,
-    password: 'LoadTest1!',
+    password: __ENV.LOAD_TEST_PASSWORD || 'LoadTest1!',
   });
 
   const registerRes = http.post(
@@ -154,7 +154,7 @@ export function loginScenario(data) {
   group('auth - login', () => {
     const payload = JSON.stringify({
       email: data.email,
-      password: 'LoadTest1!',
+      password: __ENV.LOAD_TEST_PASSWORD || 'LoadTest1!',
     });
 
     const start = Date.now();

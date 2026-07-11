@@ -24,9 +24,9 @@ import org.springframework.util.backoff.FixedBackOff;
 /**
  * Kafka configuration for processing-service.
  *
- * Declares both consumer factory (for reading file.uploaded events) and
- * producer factory (for publishing to file.processed and DLT topics).
- * Both are explicit beans so we have full control over serialisation config.
+ * <p>Declares both consumer factory (for reading file.uploaded events) and producer factory (for
+ * publishing to file.processed and DLT topics). Both are explicit beans so we have full control
+ * over serialisation config.
  */
 @Configuration
 @EnableKafka
@@ -87,8 +87,8 @@ public class ProcessingKafkaConfig {
 
     // DLT: after 3 retries with 5 s gap, dead-letter the message
     DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate());
-    DefaultErrorHandler errorHandler = new DefaultErrorHandler(
-        recoverer, new FixedBackOff(5000L, 3L));
+    DefaultErrorHandler errorHandler =
+        new DefaultErrorHandler(recoverer, new FixedBackOff(5000L, 3L));
     errorHandler.addNotRetryableExceptions(
         IllegalArgumentException.class, NullPointerException.class);
 

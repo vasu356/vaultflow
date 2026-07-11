@@ -3,10 +3,11 @@ spring:
     exclude:
       - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
   datasource:
-    # Overridden by @DynamicPropertySource in tests
+    # Overridden by @DynamicPropertySource in AuthIntegrationTest
     url: jdbc:postgresql://localhost:5432/vaultflow_test
     username: vaultflow
-    password: vaultflow
+    # Testcontainers sets DB password via @DynamicPropertySource — no default here
+    password: "" # intentionally empty; Testcontainers overrides this
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -20,6 +21,10 @@ vaultflow:
     access-token-expiry-seconds: 900
     refresh-token-expiry-seconds: 604800
     issuer: vaultflow-auth
+    # JWT key paths overridden by @DynamicPropertySource in integration tests
+    # Unit tests (AuthServiceTest) mock JwtTokenProvider — keys not needed
+    private-key-path: ${VAULTFLOW_JWT_PRIVATE_KEY_PATH:/keys/private.pem}
+    public-key-path: ${VAULTFLOW_JWT_PUBLIC_KEY_PATH:/keys/public.pem}
 
 management:
   endpoints:

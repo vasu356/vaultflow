@@ -7,10 +7,15 @@ import lombok.*;
 
 @Entity
 @Table(name = "signed_urls")
-@Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class SignedUrlRecord {
 
-  @Id @GeneratedValue(strategy = GenerationType.UUID)
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
   private UUID id;
 
   @Column(name = "object_version_id", nullable = false)

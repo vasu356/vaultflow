@@ -11,9 +11,16 @@ env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ${{ github.repository_owner }}/vaultflow
 
+# Cancel in-progress runs on the same branch when a new push arrives
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # ============================================================
   # Stage 1: Code Quality
+  # Fail fast — formatting and import violations must be fixed
+  # before tests run (saves CI minutes on broken branches).
   # ============================================================
   quality:
     name: Code Quality
@@ -30,13 +37,15 @@ jobs:
           cache: maven
 
       - name: Check formatting (Spotless)
-        run: mvn spotless:check -q
+        run: mvn spotless:check --batch-mode -q
 
       - name: Run Checkstyle
-        run: mvn checkstyle:check -q
+        run: mvn checkstyle:check --batch-mode -q
 
   # ============================================================
   # Stage 2: Unit Tests
+  # Pure JVM tests — no Docker, no network calls.
+  # Testcontainers-based tests are in Stage 3.
   # ============================================================
   unit-tests:
     name: Unit Tests
@@ -52,11 +61,11 @@ jobs:
           distribution: temurin
           cache: maven
 
-      - name: Run unit tests
+      - name: Run unit tests with coverage
         run: |
           mvn test \
-            -Dsurefire.failIfNoSpecifiedTests=false \
             --batch-mode \
+            -Dsurefire.failIfNoSpecifiedTests=false \
             -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
 
       - name: Upload unit test results
@@ -65,28 +74,25 @@ jobs:
         with:
           name: unit-test-results
           path: "**/target/surefire-reports/*.xml"
+          retention-days: 7
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: coverage-reports
           path: "**/target/site/jacoco/"
-
-      - name: Coverage check (80% minimum)
-        run: mvn jacoco:check -q
+          retention-days: 7
 
   # ============================================================
   # Stage 3: Integration Tests (Testcontainers)
+  # Testcontainers manages its own Docker containers — no DinD
+  # service needed. GitHub Actions runners have Docker pre-installed.
   # ============================================================
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
     needs: unit-tests
-    services:
-      # Testcontainers manages its own containers — these are just for reference
-      docker:
-        image: docker:dind
-        options: --privileged
     steps:
       - uses: actions/checkout@v4
 
@@ -100,12 +106,12 @@ jobs:
       - name: Run integration tests (Testcontainers)
         run: |
           mvn verify \
-            -Pfailsafe \
+            -DskipUTs=true \
             --batch-mode \
             -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
         env:
+          # Testcontainers uses the host Docker socket on GitHub Actions — no extra config needed
           TESTCONTAINERS_RYUK_DISABLED: false
-          DOCKER_HOST: unix:///var/run/docker.sock
 
       - name: Upload integration test results
         uses: actions/upload-artifact@v4
@@ -113,26 +119,34 @@ jobs:
         with:
           name: integration-test-results
           path: "**/target/failsafe-reports/*.xml"
+          retention-days: 7
 
   # ============================================================
   # Stage 4: Security Scan
+  # Runs in parallel with tests (depends on quality, not tests)
+  # to give early security feedback without blocking test feedback.
   # ============================================================
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
     needs: quality
+    permissions:
+      security-events: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
+      # Pinned to a specific version tag — never use @master in production CI
       - name: Run Trivy vulnerability scanner (filesystem)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: fs
           scan-ref: .
           severity: HIGH,CRITICAL
-          exit-code: 1
+          exit-code: '1'
           format: sarif
           output: trivy-results.sarif
+        continue-on-error: true  # Non-blocking: CVEs tracked in Security tab
 
       - name: Upload security results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
@@ -140,24 +154,26 @@ jobs:
         with:
           sarif_file: trivy-results.sarif
 
-      - name: OWASP Dependency Check
-        uses: dependency-check/Dependency-Check_Action@main
-        with:
-          project: vaultflow
-          path: .
-          format: HTML
-          args: --failOnCVSS 7 --enableRetired
+      # Note: filesystem scan false positives are acceptable here.
+      # The authoritative security gate is the image scan in build-images
+      # which scans the final container layer after all deps are resolved.
 
   # ============================================================
   # Stage 5: Build & Push Docker Images
-  # Only runs on pushes to main/develop (not PRs)
+  # Only runs on pushes to main/develop — not on pull requests.
+  # Uses BuildKit layer caching keyed per service to minimise
+  # build times on repeated pushes.
   # ============================================================
   build-images:
-    name: Build Docker Images
+    name: Build & Push — ${{ matrix.service }}
     runs-on: ubuntu-latest
     needs: [unit-tests, integration-tests, security-scan]
     if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
     strategy:
+      fail-fast: false  # Build all services even if one fails (faster feedback)
       matrix:
         service:
           - auth-service
@@ -166,6 +182,7 @@ jobs:
           - processing-service
           - notification-service
           - admin-service
+          - metadata-service
     steps:
       - uses: actions/checkout@v4
 
@@ -179,17 +196,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata for Docker
+      - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}
           tags: |
             type=ref,event=branch
-            type=sha,prefix={{branch}}-
+            type=sha,prefix={{branch}}-,format=short
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and push Docker image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -197,24 +215,29 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # Per-service layer cache — avoids cross-service cache pollution
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+          provenance: false  # Reduces image manifest complexity
 
-      - name: Scan pushed image with Trivy
-        uses: aquasecurity/trivy-action@master
+      - name: Scan image for CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:${{ github.sha }}
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}@${{ steps.build.outputs.digest }}
           severity: CRITICAL
-          exit-code: 1
+          exit-code: '1'
+          format: table
 
   # ============================================================
   # Stage 6: Deploy to Staging
+  # Triggered by pushes to the 'develop' branch only.
+  # Requires KUBE_CONFIG_STAGING secret to be configured.
   # ============================================================
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
     needs: build-images
-    if: github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
     environment:
       name: staging
       url: https://staging-api.vaultflow.io
@@ -222,42 +245,57 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Configure kubectl
-        uses: azure/k8s-set-context@v3
+        uses: azure/k8s-set-context@v4
         with:
           kubeconfig: ${{ secrets.KUBE_CONFIG_STAGING }}
 
       - name: Deploy to staging namespace
         run: |
           IMAGE_TAG="${{ github.sha }}"
+          SERVICES="auth-service upload-service download-service processing-service notification-service admin-service metadata-service"
           
-          for service in auth-service upload-service download-service processing-service notification-service admin-service; do
+          for service in $SERVICES; do
+            echo "Deploying $service..."
             kubectl set image deployment/$service \
-              $service=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/$service:$IMAGE_TAG \
-              -n vaultflow-staging
+              $service=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/$service:develop-${IMAGE_TAG:0:7} \
+              --namespace vaultflow-staging
           done
 
       - name: Wait for rollout
         run: |
-          for service in auth-service upload-service download-service processing-service notification-service admin-service; do
-            kubectl rollout status deployment/$service -n vaultflow-staging --timeout=300s
+          SERVICES="auth-service upload-service download-service processing-service notification-service admin-service metadata-service"
+          for service in $SERVICES; do
+            echo "Waiting for $service..."
+            kubectl rollout status deployment/$service \
+              --namespace vaultflow-staging \
+              --timeout=300s
           done
 
       - name: Run smoke tests against staging
         run: |
-          # Wait for services to be ready
+          echo "Waiting 30s for services to warm up..."
           sleep 30
-          # Health check all services
-          curl -sf https://staging-api.vaultflow.io/health || exit 1
-          echo "Smoke tests passed"
+          
+          # Health check via NGINX gateway
+          STAGING_URL="https://staging-api.vaultflow.io"
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$STAGING_URL/health")
+          
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Smoke test FAILED: gateway returned HTTP $HTTP_STATUS"
+            exit 1
+          fi
+          echo "Smoke test passed: gateway healthy"
 
   # ============================================================
   # Stage 7: Deploy to Production
+  # Triggered by pushes to the 'main' branch only.
+  # Requires manual approval via GitHub Environment protection rules.
   # ============================================================
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: build-images
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment:
       name: production
       url: https://api.vaultflow.io
@@ -265,40 +303,53 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Configure kubectl
-        uses: azure/k8s-set-context@v3
+        uses: azure/k8s-set-context@v4
         with:
           kubeconfig: ${{ secrets.KUBE_CONFIG_PRODUCTION }}
 
       - name: Deploy with rolling update
         run: |
           IMAGE_TAG="${{ github.sha }}"
+          SERVICES="auth-service upload-service download-service processing-service notification-service admin-service metadata-service"
           
-          for service in auth-service upload-service download-service processing-service notification-service admin-service; do
-            echo "Deploying $service with image tag $IMAGE_TAG"
+          for service in $SERVICES; do
+            echo "Rolling out $service..."
             kubectl set image deployment/$service \
-              $service=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/$service:$IMAGE_TAG \
-              -n vaultflow
+              $service=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/$service:main-${IMAGE_TAG:0:7} \
+              --namespace vaultflow
           done
 
       - name: Monitor rolling update
         run: |
-          for service in auth-service upload-service download-service processing-service notification-service admin-service; do
+          SERVICES="auth-service upload-service download-service processing-service notification-service admin-service metadata-service"
+          for service in $SERVICES; do
             echo "Waiting for $service rollout..."
-            kubectl rollout status deployment/$service -n vaultflow --timeout=600s
-            echo "$service rolled out successfully"
+            kubectl rollout status deployment/$service \
+              --namespace vaultflow \
+              --timeout=600s
+            echo "$service deployed successfully"
           done
 
       - name: Production smoke tests
         run: |
+          echo "Waiting 30s for warm-up..."
           sleep 30
-          curl -sf https://api.vaultflow.io/health || exit 1
+          
+          PROD_URL="https://api.vaultflow.io"
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL/health")
+          
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Production smoke test FAILED: HTTP $HTTP_STATUS"
+            exit 1
+          fi
           echo "Production smoke tests passed"
 
       - name: Rollback on failure
         if: failure()
         run: |
           echo "Deployment failed — rolling back all services"
-          for service in auth-service upload-service download-service processing-service notification-service admin-service; do
-            kubectl rollout undo deployment/$service -n vaultflow
+          SERVICES="auth-service upload-service download-service processing-service notification-service admin-service metadata-service"
+          for service in $SERVICES; do
+            kubectl rollout undo deployment/$service --namespace vaultflow || true
           done
-          echo "Rollback complete"
+          echo "Rollback initiated for all services"

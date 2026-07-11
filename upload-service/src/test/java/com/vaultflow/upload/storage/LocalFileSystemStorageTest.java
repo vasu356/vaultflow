@@ -14,8 +14,7 @@ import org.junit.jupiter.api.io.TempDir;
 @DisplayName("LocalFileSystemStorage")
 class LocalFileSystemStorageTest {
 
-  @TempDir
-  Path tempDir;
+  @TempDir Path tempDir;
 
   LocalFileSystemStorage storage;
 
@@ -34,7 +33,8 @@ class LocalFileSystemStorageTest {
       byte[] data = "hello world content".getBytes(StandardCharsets.UTF_8);
       String key = "abc/def/abcdef1234";
 
-      String returned = storage.store(key, new ByteArrayInputStream(data), data.length, "text/plain");
+      String returned =
+          storage.store(key, new ByteArrayInputStream(data), data.length, "text/plain");
 
       assertThat(returned).isEqualTo(key);
       assertThat(storage.exists(key)).isTrue();
@@ -57,7 +57,8 @@ class LocalFileSystemStorageTest {
 
       // Second store with different data — should be ignored (dedup)
       byte[] differentData = "different content".getBytes();
-      storage.store(key, new ByteArrayInputStream(differentData), differentData.length, "text/plain");
+      storage.store(
+          key, new ByteArrayInputStream(differentData), differentData.length, "text/plain");
 
       byte[] afterSecondStore;
       try (InputStream in = storage.retrieve(key)) {
@@ -70,8 +71,13 @@ class LocalFileSystemStorageTest {
     @Test
     @DisplayName("rejects path traversal attempts")
     void rejectsPathTraversal() {
-      assertThatThrownBy(() ->
-          storage.store("../../../etc/passwd", new ByteArrayInputStream(new byte[0]), 0, "text/plain"))
+      assertThatThrownBy(
+              () ->
+                  storage.store(
+                      "../../../etc/passwd",
+                      new ByteArrayInputStream(new byte[0]),
+                      0,
+                      "text/plain"))
           .isInstanceOf(StorageException.class)
           .hasMessageContaining("Invalid storage key");
     }
@@ -79,8 +85,10 @@ class LocalFileSystemStorageTest {
     @Test
     @DisplayName("rejects absolute path keys")
     void rejectsAbsolutePaths() {
-      assertThatThrownBy(() ->
-          storage.store("/etc/passwd", new ByteArrayInputStream(new byte[0]), 0, "text/plain"))
+      assertThatThrownBy(
+              () ->
+                  storage.store(
+                      "/etc/passwd", new ByteArrayInputStream(new byte[0]), 0, "text/plain"))
           .isInstanceOf(StorageException.class);
     }
 
@@ -165,12 +173,16 @@ class LocalFileSystemStorageTest {
       byte[] part2 = "World".getBytes();
       byte[] part3 = "!".getBytes();
 
-      String partKey1 = storage.storePart(sessionId, 1, new ByteArrayInputStream(part1), part1.length);
-      String partKey2 = storage.storePart(sessionId, 2, new ByteArrayInputStream(part2), part2.length);
-      String partKey3 = storage.storePart(sessionId, 3, new ByteArrayInputStream(part3), part3.length);
+      String partKey1 =
+          storage.storePart(sessionId, 1, new ByteArrayInputStream(part1), part1.length);
+      String partKey2 =
+          storage.storePart(sessionId, 2, new ByteArrayInputStream(part2), part2.length);
+      String partKey3 =
+          storage.storePart(sessionId, 3, new ByteArrayInputStream(part3), part3.length);
 
       String finalKey = "abc/def/assembledfile";
-      long totalBytes = storage.assembleParts(finalKey, sessionId, List.of(partKey1, partKey2, partKey3));
+      long totalBytes =
+          storage.assembleParts(finalKey, sessionId, List.of(partKey1, partKey2, partKey3));
 
       assertThat(totalBytes).isEqualTo(part1.length + part2.length + part3.length);
       assertThat(storage.exists(finalKey)).isTrue();
@@ -214,8 +226,7 @@ class LocalFileSystemStorageTest {
     @Test
     @DisplayName("delete of non-existent key is silent (no exception)")
     void deleteNonExistentIsIdempotent() {
-      assertThatNoException()
-          .isThrownBy(() -> storage.delete("abc/def/nonexistent"));
+      assertThatNoException().isThrownBy(() -> storage.delete("abc/def/nonexistent"));
     }
   }
 }

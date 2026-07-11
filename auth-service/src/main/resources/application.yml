@@ -18,7 +18,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/vaultflow}
     username: ${DB_USERNAME:vaultflow}
-    password: ${DB_PASSWORD:vaultflow}
+    password: ${DB_PASSWORD}
     hikari:
       pool-name: AuthHikariPool
       maximum-pool-size: 20       # Formula: (cores * 2) + effective_spindle_count

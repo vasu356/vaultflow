@@ -15,20 +15,19 @@ import org.springframework.stereotype.Component;
 /**
  * Kafka consumer for the {@code file.uploaded} topic.
  *
- * <p>Design decisions:
- * - Manual acknowledgment (AckMode.MANUAL_IMMEDIATE): We ack only after all processors succeed.
- *   This guarantees at-least-once processing — if the pod dies mid-processing, the message is
- *   redelivered and processed again. All processors are idempotent on objectVersionId.
+ * <p>Design decisions: - Manual acknowledgment (AckMode.MANUAL_IMMEDIATE): We ack only after all
+ * processors succeed. This guarantees at-least-once processing — if the pod dies mid-processing,
+ * the message is redelivered and processed again. All processors are idempotent on objectVersionId.
  *
- * - Consumer group {@code processing-service}: Kafka assigns each partition to exactly one consumer
- *   in the group. With 16 partitions, we can scale to 16 processing-service pods before hitting
- *   the partition limit.
+ * <p>- Consumer group {@code processing-service}: Kafka assigns each partition to exactly one
+ * consumer in the group. With 16 partitions, we can scale to 16 processing-service pods before
+ * hitting the partition limit.
  *
- * - Concurrency 4: Each pod runs 4 concurrent listener threads, each owning one or more
- *   partitions. Combined with 4 pods = 16 concurrent consumers. Adjust based on CPU budget.
+ * <p>- Concurrency 4: Each pod runs 4 concurrent listener threads, each owning one or more
+ * partitions. Combined with 4 pods = 16 concurrent consumers. Adjust based on CPU budget.
  *
- * - DLT (Dead Letter Topic): After 3 retries, failed messages go to {@code file.uploaded.DLT}.
- *   A separate DLT consumer alerts on-call and writes to a dead_letter_log table for manual review.
+ * <p>- DLT (Dead Letter Topic): After 3 retries, failed messages go to {@code file.uploaded.DLT}. A
+ * separate DLT consumer alerts on-call and writes to a dead_letter_log table for manual review.
  */
 @Component
 @RequiredArgsConstructor
@@ -56,8 +55,13 @@ public class FileUploadedConsumer {
     MDC.put("orgId", event.orgId());
 
     try {
-      log.info("Processing event: objectVersionId={} contentType={} size={} partition={} offset={}",
-          event.objectVersionId(), event.contentType(), event.sizeBytes(), partition, offset);
+      log.info(
+          "Processing event: objectVersionId={} contentType={} size={} partition={} offset={}",
+          event.objectVersionId(),
+          event.contentType(),
+          event.sizeBytes(),
+          partition,
+          offset);
 
       orchestrator.process(event);
 
@@ -65,8 +69,11 @@ public class FileUploadedConsumer {
       log.info("Event processed successfully: objectVersionId={}", event.objectVersionId());
 
     } catch (Exception e) {
-      log.error("Processing failed for objectVersionId={}: {}",
-          event.objectVersionId(), e.getMessage(), e);
+      log.error(
+          "Processing failed for objectVersionId={}: {}",
+          event.objectVersionId(),
+          e.getMessage(),
+          e);
       // Do NOT acknowledge — Kafka will redeliver after retry interval.
       // Spring Kafka retry + DLT config handles exhausted retries.
       throw e;

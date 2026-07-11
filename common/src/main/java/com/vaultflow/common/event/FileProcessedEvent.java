@@ -4,9 +4,9 @@ import java.time.Instant;
 import java.util.Map;
 
 /**
- * Published to Kafka topic {@code file.processed} after processing pipeline completes for an
- * object version. Consumed by notification-service (webhooks) and metadata-service (update
- * processing status and thumbnail paths).
+ * Published to Kafka topic {@code file.processed} after processing pipeline completes for an object
+ * version. Consumed by notification-service (webhooks) and metadata-service (update processing
+ * status and thumbnail paths).
  */
 public record FileProcessedEvent(
     String eventId,

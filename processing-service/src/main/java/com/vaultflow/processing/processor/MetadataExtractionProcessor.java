@@ -14,11 +14,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Extracts file metadata (size, creation time, media-specific properties).
- * Results are stored in object_versions.metadata JSONB column.
+ * Extracts file metadata (size, creation time, media-specific properties). Results are stored in
+ * object_versions.metadata JSONB column.
  *
- * <p>Production extension: Integrate Apache Tika for deep metadata extraction
- * (EXIF from images, ID3 tags from audio, document properties from Office files).
+ * <p>Production extension: Integrate Apache Tika for deep metadata extraction (EXIF from images,
+ * ID3 tags from audio, document properties from Office files).
  */
 @Component
 @RequiredArgsConstructor
@@ -56,15 +56,23 @@ public class MetadataExtractionProcessor {
 
       meterRegistry.counter("processing.metadata.extracted").increment();
 
-      return FileProcessedEvent.success(event.objectVersionId(), event.objectId(),
-          event.bucketId(), event.orgId(),
-          FileProcessedEvent.ProcessingType.METADATA_EXTRACTION, metadata);
+      return FileProcessedEvent.success(
+          event.objectVersionId(),
+          event.objectId(),
+          event.bucketId(),
+          event.orgId(),
+          FileProcessedEvent.ProcessingType.METADATA_EXTRACTION,
+          metadata);
 
     } catch (IOException e) {
       log.warn("Metadata extraction failed: {}", e.getMessage());
-      return FileProcessedEvent.failed(event.objectVersionId(), event.objectId(),
-          event.bucketId(), event.orgId(),
-          FileProcessedEvent.ProcessingType.METADATA_EXTRACTION, e.getMessage());
+      return FileProcessedEvent.failed(
+          event.objectVersionId(),
+          event.objectId(),
+          event.bucketId(),
+          event.orgId(),
+          FileProcessedEvent.ProcessingType.METADATA_EXTRACTION,
+          e.getMessage());
     }
   }
 }

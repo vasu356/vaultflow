@@ -6,11 +6,11 @@ import org.apache.commons.codec.digest.DigestUtils;
 /**
  * S3-compatible ETag generation.
  *
- * <p>Single-part: ETag = '"' + MD5(content) + '"'
- * Multipart: ETag = '"' + MD5(concat(part_MD5s)) + "-" + partCount + '"'
+ * <p>Single-part: ETag = '"' + MD5(content) + '"' Multipart: ETag = '"' + MD5(concat(part_MD5s)) +
+ * "-" + partCount + '"'
  *
- * <p>We expose ETags for compatibility with S3 SDK clients and for conditional requests
- * (If-Match, If-None-Match headers in download service).
+ * <p>We expose ETags for compatibility with S3 SDK clients and for conditional requests (If-Match,
+ * If-None-Match headers in download service).
  */
 public final class EtagUtil {
 
@@ -25,8 +25,8 @@ public final class EtagUtil {
   }
 
   /**
-   * Compute multipart ETag: MD5 of the concatenated binary MD5 digests of all parts.
-   * This matches the AWS S3 multipart ETag algorithm exactly.
+   * Compute multipart ETag: MD5 of the concatenated binary MD5 digests of all parts. This matches
+   * the AWS S3 multipart ETag algorithm exactly.
    */
   public static String multipartEtag(List<String> partMd5Hexes) {
     byte[] concatenated = new byte[partMd5Hexes.size() * 16];
@@ -43,8 +43,9 @@ public final class EtagUtil {
     int len = hex.length();
     byte[] data = new byte[len / 2];
     for (int i = 0; i < len; i += 2) {
-      data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
-          + Character.digit(hex.charAt(i + 1), 16));
+      data[i / 2] =
+          (byte)
+              ((Character.digit(hex.charAt(i), 16) << 4) + Character.digit(hex.charAt(i + 1), 16));
     }
     return data;
   }

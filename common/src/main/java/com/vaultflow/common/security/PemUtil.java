@@ -1,8 +1,5 @@
 package com.vaultflow.common.security;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,36 +16,35 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Utility for loading PEM-encoded RSA keys.
  *
- * <p>Supports both PKCS#8 private keys (BEGIN PRIVATE KEY) and SPKI public keys
- * (BEGIN PUBLIC KEY). This is the standard format produced by OpenSSL and most
- * key management tools.
+ * <p>Supports both PKCS#8 private keys (BEGIN PRIVATE KEY) and SPKI public keys (BEGIN PUBLIC KEY).
+ * This is the standard format produced by OpenSSL and most key management tools.
  */
 public final class PemUtil {
 
   private static final Logger log = LoggerFactory.getLogger(PemUtil.class);
 
   private static final Pattern PUBLIC_KEY_PATTERN =
-      Pattern.compile("-+BEGIN\\s+PUBLIC\\s+KEY-+\\s*(.*?)\\s*-+END\\s+PUBLIC\\s+KEY-+", Pattern.DOTALL);
+      Pattern.compile(
+          "-+BEGIN\\s+PUBLIC\\s+KEY-+\\s*(.*?)\\s*-+END\\s+PUBLIC\\s+KEY-+", Pattern.DOTALL);
   private static final Pattern PRIVATE_KEY_PATTERN =
-      Pattern.compile("-+BEGIN\\s+PRIVATE\\s+KEY-+\\s*(.*?)\\s*-+END\\s+PRIVATE\\s+KEY-+", Pattern.DOTALL);
+      Pattern.compile(
+          "-+BEGIN\\s+PRIVATE\\s+KEY-+\\s*(.*?)\\s*-+END\\s+PRIVATE\\s+KEY-+", Pattern.DOTALL);
 
   private PemUtil() {}
 
-  /**
-   * Load an RSA public key from a PEM file path.
-   */
+  /** Load an RSA public key from a PEM file path. */
   public static PublicKey loadPublicKey(Path path) throws IOException {
     String pem = Files.readString(path, StandardCharsets.UTF_8);
     return parsePublicKey(pem);
   }
 
-  /**
-   * Load an RSA public key from a classpath resource.
-   */
+  /** Load an RSA public key from a classpath resource. */
   public static PublicKey loadPublicKeyFromClasspath(String resourcePath) throws IOException {
     try (InputStream is = PemUtil.class.getClassLoader().getResourceAsStream(resourcePath)) {
       if (is == null) {
@@ -59,17 +55,13 @@ public final class PemUtil {
     }
   }
 
-  /**
-   * Load an RSA private key from a PEM file path.
-   */
+  /** Load an RSA private key from a PEM file path. */
   public static PrivateKey loadPrivateKey(Path path) throws IOException {
     String pem = Files.readString(path, StandardCharsets.UTF_8);
     return parsePrivateKey(pem);
   }
 
-  /**
-   * Load an RSA private key from a classpath resource.
-   */
+  /** Load an RSA private key from a classpath resource. */
   public static PrivateKey loadPrivateKeyFromClasspath(String resourcePath) throws IOException {
     try (InputStream is = PemUtil.class.getClassLoader().getResourceAsStream(resourcePath)) {
       if (is == null) {

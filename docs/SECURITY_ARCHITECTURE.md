@@ -237,9 +237,10 @@ Exceeding burst returns HTTP 429. This protects against brute-force credential s
 
 ```yaml
 # docker-compose.yml — for local development only
+# All secrets come from .env (see .env.example); never hardcode them
 environment:
-  DB_PASSWORD: vaultflow
-  REDIS_PASSWORD: <your-redis-password>
+  DB_PASSWORD: ${DB_PASSWORD}
+  REDIS_PASSWORD: ${REDIS_PASSWORD}
 ```
 
 **Never use development defaults in production.**

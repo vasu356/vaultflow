@@ -2,7 +2,6 @@ package com.vaultflow.admin.service;
 
 import com.vaultflow.common.dto.PageResponse;
 import com.vaultflow.common.exception.ResourceNotFoundException;
-import com.vaultflow.common.security.VaultFlowUserPrincipal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -14,9 +13,9 @@ import org.springframework.stereotype.Service;
 /**
  * Admin service providing platform-wide operational capabilities.
  *
- * <p>Uses JdbcTemplate for analytics queries — these are complex aggregations that JPA/JPQL
- * would handle poorly. Native SQL gives full access to PostgreSQL window functions, CTEs,
- * and partition-aware queries on audit_logs.
+ * <p>Uses JdbcTemplate for analytics queries — these are complex aggregations that JPA/JPQL would
+ * handle poorly. Native SQL gives full access to PostgreSQL window functions, CTEs, and
+ * partition-aware queries on audit_logs.
  */
 @Service
 @RequiredArgsConstructor
@@ -33,44 +32,53 @@ public class AdminService {
     Map<String, Object> overview = new LinkedHashMap<>();
 
     // Storage usage
-    Map<String, Object> storage = jdbc.queryForMap(
-        "SELECT quota_bytes, used_bytes, "
-        + "ROUND(used_bytes::numeric / NULLIF(quota_bytes, 0) * 100, 2) AS used_pct "
-        + "FROM organizations WHERE id = ?::uuid", orgId);
+    Map<String, Object> storage =
+        jdbc.queryForMap(
+            "SELECT quota_bytes, used_bytes, "
+                + "ROUND(used_bytes::numeric / NULLIF(quota_bytes, 0) * 100, 2) AS used_pct "
+                + "FROM organizations WHERE id = ?::uuid",
+            orgId);
     overview.put("storage", storage);
 
     // Object counts
-    Long totalObjects = jdbc.queryForObject(
-        "SELECT COUNT(*) FROM objects o "
-        + "JOIN buckets b ON o.bucket_id = b.id "
-        + "WHERE b.org_id = ?::uuid AND o.is_deleted = false",
-        Long.class, orgId);
+    Long totalObjects =
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM objects o "
+                + "JOIN buckets b ON o.bucket_id = b.id "
+                + "WHERE b.org_id = ?::uuid AND o.is_deleted = false",
+            Long.class,
+            orgId);
     overview.put("totalObjects", totalObjects);
 
     // Bucket count
-    Long totalBuckets = jdbc.queryForObject(
-        "SELECT COUNT(*) FROM buckets WHERE org_id = ?::uuid AND status = 'ACTIVE'",
-        Long.class, orgId);
+    Long totalBuckets =
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM buckets WHERE org_id = ?::uuid AND status = 'ACTIVE'",
+            Long.class,
+            orgId);
     overview.put("totalBuckets", totalBuckets);
 
     // User count
-    Long totalUsers = jdbc.queryForObject(
-        "SELECT COUNT(*) FROM users WHERE org_id = ?::uuid AND status = 'ACTIVE'",
-        Long.class, orgId);
+    Long totalUsers =
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM users WHERE org_id = ?::uuid AND status = 'ACTIVE'",
+            Long.class,
+            orgId);
     overview.put("totalUsers", totalUsers);
 
     // Processing pipeline status
-    Map<String, Object> processingStats = jdbc.queryForMap(
-        "SELECT "
-        + "  COUNT(*) FILTER (WHERE processing_status = 'PENDING') AS pending, "
-        + "  COUNT(*) FILTER (WHERE processing_status = 'PROCESSING') AS processing, "
-        + "  COUNT(*) FILTER (WHERE processing_status = 'COMPLETED') AS completed, "
-        + "  COUNT(*) FILTER (WHERE processing_status = 'FAILED') AS failed "
-        + "FROM object_versions ov "
-        + "JOIN objects o ON ov.object_id = o.id "
-        + "JOIN buckets b ON o.bucket_id = b.id "
-        + "WHERE b.org_id = ?::uuid",
-        orgId);
+    Map<String, Object> processingStats =
+        jdbc.queryForMap(
+            "SELECT "
+                + "  COUNT(*) FILTER (WHERE processing_status = 'PENDING') AS pending, "
+                + "  COUNT(*) FILTER (WHERE processing_status = 'PROCESSING') AS processing, "
+                + "  COUNT(*) FILTER (WHERE processing_status = 'COMPLETED') AS completed, "
+                + "  COUNT(*) FILTER (WHERE processing_status = 'FAILED') AS failed "
+                + "FROM object_versions ov "
+                + "JOIN objects o ON ov.object_id = o.id "
+                + "JOIN buckets b ON o.bucket_id = b.id "
+                + "WHERE b.org_id = ?::uuid",
+            orgId);
     overview.put("processingPipeline", processingStats);
 
     return overview;
@@ -81,66 +89,62 @@ public class AdminService {
   // ============================================================
 
   /**
-   * Daily upload volume over the last N days.
-   * Useful for capacity planning and billing dashboards.
+   * Daily upload volume over the last N days. Useful for capacity planning and billing dashboards.
    */
   public List<Map<String, Object>> getDailyUploadStats(String orgId, int days) {
     return jdbc.queryForList(
         "SELECT "
-        + "  DATE_TRUNC('day', ov.created_at) AS day, "
-        + "  COUNT(*) AS upload_count, "
-        + "  SUM(ov.size_bytes) AS total_bytes, "
-        + "  AVG(ov.size_bytes) AS avg_bytes "
-        + "FROM object_versions ov "
-        + "JOIN objects o ON ov.object_id = o.id "
-        + "JOIN buckets b ON o.bucket_id = b.id "
-        + "WHERE b.org_id = ?::uuid "
-        + "  AND ov.created_at >= NOW() - INTERVAL '1 day' * ? "
-        + "  AND ov.is_delete_marker = false "
-        + "GROUP BY DATE_TRUNC('day', ov.created_at) "
-        + "ORDER BY day DESC",
-        orgId, days);
+            + "  DATE_TRUNC('day', ov.created_at) AS day, "
+            + "  COUNT(*) AS upload_count, "
+            + "  SUM(ov.size_bytes) AS total_bytes, "
+            + "  AVG(ov.size_bytes) AS avg_bytes "
+            + "FROM object_versions ov "
+            + "JOIN objects o ON ov.object_id = o.id "
+            + "JOIN buckets b ON o.bucket_id = b.id "
+            + "WHERE b.org_id = ?::uuid "
+            + "  AND ov.created_at >= NOW() - INTERVAL '1 day' * ? "
+            + "  AND ov.is_delete_marker = false "
+            + "GROUP BY DATE_TRUNC('day', ov.created_at) "
+            + "ORDER BY day DESC",
+        orgId,
+        days);
   }
 
-  /**
-   * Top N buckets by storage usage.
-   */
+  /** Top N buckets by storage usage. */
   public List<Map<String, Object>> getTopBucketsByStorage(String orgId, int limit) {
     return jdbc.queryForList(
         "SELECT "
-        + "  b.name AS bucket_name, "
-        + "  b.id AS bucket_id, "
-        + "  COUNT(DISTINCT o.id) AS object_count, "
-        + "  SUM(ov.size_bytes) AS total_bytes, "
-        + "  MAX(ov.created_at) AS last_upload_at "
-        + "FROM buckets b "
-        + "LEFT JOIN objects o ON o.bucket_id = b.id AND o.is_deleted = false "
-        + "LEFT JOIN object_versions ov ON ov.object_id = o.id AND ov.is_latest = true "
-        + "WHERE b.org_id = ?::uuid AND b.status = 'ACTIVE' "
-        + "GROUP BY b.id, b.name "
-        + "ORDER BY total_bytes DESC NULLS LAST "
-        + "LIMIT ?",
-        orgId, limit);
+            + "  b.name AS bucket_name, "
+            + "  b.id AS bucket_id, "
+            + "  COUNT(DISTINCT o.id) AS object_count, "
+            + "  SUM(ov.size_bytes) AS total_bytes, "
+            + "  MAX(ov.created_at) AS last_upload_at "
+            + "FROM buckets b "
+            + "LEFT JOIN objects o ON o.bucket_id = b.id AND o.is_deleted = false "
+            + "LEFT JOIN object_versions ov ON ov.object_id = o.id AND ov.is_latest = true "
+            + "WHERE b.org_id = ?::uuid AND b.status = 'ACTIVE' "
+            + "GROUP BY b.id, b.name "
+            + "ORDER BY total_bytes DESC NULLS LAST "
+            + "LIMIT ?",
+        orgId,
+        limit);
   }
 
-  /**
-   * Content type distribution across the organization.
-   * Useful for storage tiering decisions.
-   */
+  /** Content type distribution across the organization. Useful for storage tiering decisions. */
   public List<Map<String, Object>> getContentTypeDistribution(String orgId) {
     return jdbc.queryForList(
         "SELECT "
-        + "  COALESCE(SPLIT_PART(ov.content_type, '/', 1), 'unknown') AS media_type, "
-        + "  ov.content_type, "
-        + "  COUNT(*) AS count, "
-        + "  SUM(ov.size_bytes) AS total_bytes "
-        + "FROM object_versions ov "
-        + "JOIN objects o ON ov.object_id = o.id "
-        + "JOIN buckets b ON o.bucket_id = b.id "
-        + "WHERE b.org_id = ?::uuid AND ov.is_latest = true "
-        + "GROUP BY SPLIT_PART(ov.content_type, '/', 1), ov.content_type "
-        + "ORDER BY count DESC "
-        + "LIMIT 50",
+            + "  COALESCE(SPLIT_PART(ov.content_type, '/', 1), 'unknown') AS media_type, "
+            + "  ov.content_type, "
+            + "  COUNT(*) AS count, "
+            + "  SUM(ov.size_bytes) AS total_bytes "
+            + "FROM object_versions ov "
+            + "JOIN objects o ON ov.object_id = o.id "
+            + "JOIN buckets b ON o.bucket_id = b.id "
+            + "WHERE b.org_id = ?::uuid AND ov.is_latest = true "
+            + "GROUP BY SPLIT_PART(ov.content_type, '/', 1), ov.content_type "
+            + "ORDER BY count DESC "
+            + "LIMIT 50",
         orgId);
   }
 
@@ -151,21 +155,23 @@ public class AdminService {
   public PageResponse<Map<String, Object>> getAuditLog(
       String orgId, String action, String userId, Instant from, Instant to, int page, int size) {
 
-    String countSql = "SELECT COUNT(*) FROM audit_logs "
-        + "WHERE org_id = ?::uuid "
-        + (action != null ? "AND action = ? " : "")
-        + (userId != null ? "AND user_id = ?::uuid " : "")
-        + "AND occurred_at BETWEEN ? AND ?";
+    String countSql =
+        "SELECT COUNT(*) FROM audit_logs "
+            + "WHERE org_id = ?::uuid "
+            + (action != null ? "AND action = ? " : "")
+            + (userId != null ? "AND user_id = ?::uuid " : "")
+            + "AND occurred_at BETWEEN ? AND ?";
 
-    String dataSql = "SELECT id, user_id, action, resource_type, resource_id, "
-        + "ip_address, correlation_id, outcome, occurred_at "
-        + "FROM audit_logs "
-        + "WHERE org_id = ?::uuid "
-        + (action != null ? "AND action = ? " : "")
-        + (userId != null ? "AND user_id = ?::uuid " : "")
-        + "AND occurred_at BETWEEN ? AND ? "
-        + "ORDER BY occurred_at DESC "
-        + "LIMIT ? OFFSET ?";
+    String dataSql =
+        "SELECT id, user_id, action, resource_type, resource_id, "
+            + "ip_address, correlation_id, outcome, occurred_at "
+            + "FROM audit_logs "
+            + "WHERE org_id = ?::uuid "
+            + (action != null ? "AND action = ? " : "")
+            + (userId != null ? "AND user_id = ?::uuid " : "")
+            + "AND occurred_at BETWEEN ? AND ? "
+            + "ORDER BY occurred_at DESC "
+            + "LIMIT ? OFFSET ?";
 
     List<Object> params = new ArrayList<>();
     params.add(orgId);
@@ -192,9 +198,11 @@ public class AdminService {
   // ============================================================
 
   public void updateQuota(String orgId, long newQuotaBytes) {
-    int updated = jdbc.update(
-        "UPDATE organizations SET quota_bytes = ?, updated_at = NOW() WHERE id = ?::uuid",
-        newQuotaBytes, orgId);
+    int updated =
+        jdbc.update(
+            "UPDATE organizations SET quota_bytes = ?, updated_at = NOW() WHERE id = ?::uuid",
+            newQuotaBytes,
+            orgId);
     if (updated == 0) {
       throw new ResourceNotFoundException("Organization", orgId);
     }
@@ -217,19 +225,24 @@ public class AdminService {
     }
 
     // Pending processing jobs
-    Long pendingJobs = jdbc.queryForObject(
-        "SELECT COUNT(*) FROM object_versions WHERE processing_status = 'PENDING'", Long.class);
+    Long pendingJobs =
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM object_versions WHERE processing_status = 'PENDING'", Long.class);
     health.put("pendingProcessingJobs", pendingJobs);
 
     // Infected files (critical — needs immediate attention)
-    Long infectedFiles = jdbc.queryForObject(
-        "SELECT COUNT(*) FROM object_versions WHERE virus_scan_status = 'INFECTED'", Long.class);
+    Long infectedFiles =
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM object_versions WHERE virus_scan_status = 'INFECTED'",
+            Long.class);
     health.put("infectedFiles", infectedFiles);
 
     // Expired upload sessions (should be cleaned up)
-    Long expiredSessions = jdbc.queryForObject(
-        "SELECT COUNT(*) FROM upload_sessions WHERE status IN ('INITIATED','UPLOADING') "
-        + "AND expires_at < NOW()", Long.class);
+    Long expiredSessions =
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM upload_sessions WHERE status IN ('INITIATED','UPLOADING') "
+                + "AND expires_at < NOW()",
+            Long.class);
     health.put("expiredUploadSessions", expiredSessions);
 
     health.put("timestamp", Instant.now());

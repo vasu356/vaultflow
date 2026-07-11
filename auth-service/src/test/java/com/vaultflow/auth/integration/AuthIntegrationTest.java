@@ -1,19 +1,34 @@
 package com.vaultflow.auth.integration;
 
-import static io.restassured.RestAssured.*;
-import static org.assertj.core.api.Assertions.*;
-import static org.hamcrest.Matchers.*;
+import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.notNullValue;
 
 import com.vaultflow.auth.AuthServiceApplication;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
-import org.junit.jupiter.api.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.util.Base64;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -25,30 +40,67 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @DisplayName("Auth Service Integration Tests")
 class AuthIntegrationTest {
 
+  @TempDir static Path tempKeyDir;
+
   @Container
   static PostgreSQLContainer<?> postgres =
       new PostgreSQLContainer<>("postgres:16-alpine")
           .withDatabaseName("vaultflow_test")
           .withUsername("vaultflow")
-          .withPassword("vaultflow");
+          .withPassword("vaultflow_test_pw");
 
   @SuppressWarnings("rawtypes")
   @Container
   static GenericContainer redis =
-      new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+      new GenericContainer<>("redis:7-alpine")
+          .withExposedPorts(6379)
+          // Wait until Redis is actually accepting connections before tests start
+          .waitingFor(Wait.forLogMessage(".*Ready to accept connections.*\\n", 1));
 
-  @LocalServerPort
-  int port;
+  @LocalServerPort int port;
 
   @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
+  static void configureProperties(DynamicPropertyRegistry registry) throws Exception {
+    // Generate an in-memory RSA key pair for tests — no file dependency
+    KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+    kpg.initialize(2048);
+    KeyPair keyPair = kpg.generateKeyPair();
+
+    // Write PEM files to temp directory
+    Path privateKeyPath = tempKeyDir.resolve("private.pem");
+    Path publicKeyPath = tempKeyDir.resolve("public.pem");
+
+    String privateKeyPem =
+        "-----BEGIN PRIVATE KEY-----\n"
+            + Base64.getMimeEncoder(64, new byte[] {'\n'})
+                .encodeToString(keyPair.getPrivate().getEncoded())
+            + "\n-----END PRIVATE KEY-----\n";
+    String publicKeyPem =
+        "-----BEGIN PUBLIC KEY-----\n"
+            + Base64.getMimeEncoder(64, new byte[] {'\n'})
+                .encodeToString(keyPair.getPublic().getEncoded())
+            + "\n-----END PUBLIC KEY-----\n";
+
+    Files.writeString(privateKeyPath, privateKeyPem);
+    Files.writeString(publicKeyPath, publicKeyPem);
+
+    // Database — Testcontainers manages the actual connection details
     registry.add("spring.datasource.url", postgres::getJdbcUrl);
     registry.add("spring.datasource.username", postgres::getUsername);
     registry.add("spring.datasource.password", postgres::getPassword);
+
+    // Redis
     registry.add("spring.data.redis.host", redis::getHost);
     registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
-    registry.add("spring.kafka.bootstrap-servers", () -> "localhost:9999"); // disabled in tests
-    registry.add("spring.autoconfigure.exclude",
+    registry.add("spring.data.redis.password", () -> ""); // no password in test Redis
+
+    // JWT keys — generated dynamically above
+    registry.add("vaultflow.jwt.private-key-path", privateKeyPath::toString);
+    registry.add("vaultflow.jwt.public-key-path", publicKeyPath::toString);
+
+    // Kafka disabled for integration tests (auth-service doesn't produce to Kafka)
+    registry.add(
+        "spring.autoconfigure.exclude",
         () -> "org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration");
   }
 
@@ -58,6 +110,7 @@ class AuthIntegrationTest {
     RestAssured.basePath = "";
   }
 
+  // Shared state across ordered test methods (simulates a real session)
   private static String accessToken;
   private static String refreshToken;
 
@@ -65,7 +118,8 @@ class AuthIntegrationTest {
   @Order(1)
   @DisplayName("POST /api/v1/auth/register - registers org and owner, returns tokens")
   void registerOrganization() {
-    var body = """
+    var body =
+        """
         {
           "organizationName": "Test Corp",
           "organizationSlug": "test-corp",
@@ -103,7 +157,8 @@ class AuthIntegrationTest {
   @Order(2)
   @DisplayName("POST /api/v1/auth/register - duplicate slug returns 409")
   void duplicateSlugReturns409() {
-    var body = """
+    var body =
+        """
         {
           "organizationName": "Test Corp 2",
           "organizationSlug": "test-corp",
@@ -127,7 +182,8 @@ class AuthIntegrationTest {
   @Order(3)
   @DisplayName("POST /api/v1/auth/login - valid credentials return tokens")
   void loginWithValidCredentials() {
-    var body = """
+    var body =
+        """
         {
           "email": "owner@testcorp.com",
           "password": "SecurePass1!"
@@ -149,7 +205,8 @@ class AuthIntegrationTest {
   @Order(4)
   @DisplayName("POST /api/v1/auth/login - wrong password returns 401")
   void loginWithWrongPassword() {
-    var body = """
+    var body =
+        """
         {
           "email": "owner@testcorp.com",
           "password": "WrongPassword1!"
@@ -182,11 +239,7 @@ class AuthIntegrationTest {
   @Order(6)
   @DisplayName("GET /api/v1/auth/me - returns 401 without token")
   void getMeWithoutToken() {
-    given()
-        .when()
-        .get("/api/v1/auth/me")
-        .then()
-        .statusCode(401);
+    given().when().get("/api/v1/auth/me").then().statusCode(401);
   }
 
   @Test
@@ -195,25 +248,67 @@ class AuthIntegrationTest {
   void refreshTokenSuccess() {
     var body = String.format("{\"refreshToken\": \"%s\"}", refreshToken);
 
-    given()
-        .contentType(ContentType.JSON)
-        .body(body)
-        .when()
-        .post("/api/v1/auth/refresh")
-        .then()
-        .statusCode(200)
-        .body("accessToken", notNullValue())
-        .body("refreshToken", notNullValue());
+    var response =
+        given()
+            .contentType(ContentType.JSON)
+            .body(body)
+            .when()
+            .post("/api/v1/auth/refresh")
+            .then()
+            .statusCode(200)
+            .body("accessToken", notNullValue())
+            .body("refreshToken", notNullValue())
+            .extract()
+            .response();
+
+    // Update tokens for subsequent tests (token rotation)
+    accessToken = response.jsonPath().getString("accessToken");
+    refreshToken = response.jsonPath().getString("refreshToken");
   }
 
   @Test
   @Order(8)
-  @DisplayName("POST /api/v1/auth/register - invalid password returns 400 with field errors")
+  @DisplayName(
+      "POST /api/v1/auth/refresh - reusing previous refresh token returns 401 (theft detection)")
+  void refreshTokenReuse_DetectsTheft() {
+    // The refresh token from @Order(1) was already rotated in @Order(7)
+    // Attempting to use the original token should trigger family revocation
+    var originalToken = refreshToken; // This is now the rotated token from Order(7)
+
+    // First use the current token normally
+    var body = String.format("{\"refreshToken\": \"%s\"}", originalToken);
+    var newRefresh =
+        given()
+            .contentType(ContentType.JSON)
+            .body(body)
+            .when()
+            .post("/api/v1/auth/refresh")
+            .then()
+            .statusCode(200)
+            .extract()
+            .jsonPath()
+            .getString("refreshToken");
+
+    // Now try to reuse the old token (should be rejected)
+    given()
+        .contentType(ContentType.JSON)
+        .body(body) // same old token
+        .when()
+        .post("/api/v1/auth/refresh")
+        .then()
+        .statusCode(401)
+        .body("errorCode", equalTo("TOKEN_REUSE"));
+  }
+
+  @Test
+  @Order(9)
+  @DisplayName("POST /api/v1/auth/register - weak password returns 400 with field errors")
   void registrationWithWeakPassword() {
-    var body = """
+    var body =
+        """
         {
           "organizationName": "New Corp",
-          "organizationSlug": "new-corp",
+          "organizationSlug": "new-corp-unique",
           "fullName": "New Owner",
           "email": "owner@newcorp.com",
           "password": "weak"

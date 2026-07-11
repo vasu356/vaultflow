@@ -21,7 +21,8 @@ class ChecksumUtilTest {
     void knownHash() {
       // SHA-256("hello") = 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
       String hash = ChecksumUtil.sha256Hex("hello".getBytes(StandardCharsets.UTF_8));
-      assertThat(hash).isEqualTo("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
+      assertThat(hash)
+          .isEqualTo("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
     }
 
     @Test
@@ -64,7 +65,8 @@ class ChecksumUtilTest {
     void emptyStream() throws IOException {
       // SHA-256("") = e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       String hash = ChecksumUtil.sha256HexStreaming(new ByteArrayInputStream(new byte[0]));
-      assertThat(hash).isEqualTo("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+      assertThat(hash)
+          .isEqualTo("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
     }
   }
 
@@ -77,7 +79,8 @@ class ChecksumUtilTest {
     void twoLevelSharding() {
       String hash = "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
       String path = ChecksumUtil.toStoragePath(hash);
-      assertThat(path).isEqualTo("abc/def/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890");
+      assertThat(path)
+          .isEqualTo("abc/def/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890");
     }
 
     @Test
@@ -113,8 +116,7 @@ class ChecksumUtilTest {
     @Test
     @DisplayName("passes when checksums match (case-insensitive)")
     void checksumMatch() {
-      assertThatNoException()
-          .isThrownBy(() -> ChecksumUtil.verify("ABCDEF", "abcdef"));
+      assertThatNoException().isThrownBy(() -> ChecksumUtil.verify("ABCDEF", "abcdef"));
     }
 
     @Test

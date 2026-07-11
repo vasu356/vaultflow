@@ -15,10 +15,7 @@ public final class AuthResponses {
       UserResponse user) {
 
     public static TokenResponse of(
-        String accessToken,
-        String refreshToken,
-        long accessTokenExpiresIn,
-        UserResponse user) {
+        String accessToken, String refreshToken, long accessTokenExpiresIn, UserResponse user) {
       return new TokenResponse(accessToken, refreshToken, "Bearer", accessTokenExpiresIn, user);
     }
   }

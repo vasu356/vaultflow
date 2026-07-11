@@ -4,12 +4,10 @@ import com.vaultflow.common.event.AuditEvent;
 import com.vaultflow.common.event.FileUploadedEvent;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Instant;
-import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
 
 /**
@@ -46,27 +44,47 @@ public class UploadEventPublisher {
                     "Failed to publish FileUploadedEvent: objectId={} error={}",
                     event.objectId(),
                     ex.getMessage());
-                meterRegistry.counter("kafka.publish.failures", "topic", TOPIC_FILE_UPLOADED).increment();
+                meterRegistry
+                    .counter("kafka.publish.failures", "topic", TOPIC_FILE_UPLOADED)
+                    .increment();
               } else {
                 log.debug(
                     "Published FileUploadedEvent: objectId={} partition={} offset={}",
                     event.objectId(),
                     result.getRecordMetadata().partition(),
                     result.getRecordMetadata().offset());
-                meterRegistry.counter("kafka.publish.successes", "topic", TOPIC_FILE_UPLOADED).increment();
+                meterRegistry
+                    .counter("kafka.publish.successes", "topic", TOPIC_FILE_UPLOADED)
+                    .increment();
               }
             });
   }
 
   public void publishAuditEvent(
-      String orgId, String userId, String action, String resourceType,
-      String resourceId, String ip, AuditEvent.AuditOutcome outcome) {
+      String orgId,
+      String userId,
+      String action,
+      String resourceType,
+      String resourceId,
+      String ip,
+      AuditEvent.AuditOutcome outcome) {
 
     AuditEvent event =
         new AuditEvent(
             UUID.randomUUID().toString(),
-            orgId, userId, action, resourceType, resourceId,
-            ip, null, null, null, null, outcome, null, Instant.now());
+            orgId,
+            userId,
+            action,
+            resourceType,
+            resourceId,
+            ip,
+            null,
+            null,
+            null,
+            null,
+            outcome,
+            null,
+            Instant.now());
 
     // Partition by orgId for ordered audit log per organization
     kafkaTemplate
@@ -74,7 +92,8 @@ public class UploadEventPublisher {
         .whenComplete(
             (result, ex) -> {
               if (ex != null) {
-                log.error("Failed to publish AuditEvent: action={} error={}", action, ex.getMessage());
+                log.error(
+                    "Failed to publish AuditEvent: action={} error={}", action, ex.getMessage());
               }
             });
   }

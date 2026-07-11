@@ -1,6 +1,8 @@
 package com.vaultflow.common.security;
 
 import com.vaultflow.common.tracing.CorrelationIdFilter;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,8 +22,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
 
 /**
  * Auto-configuration providing JWT validation beans to ALL services.
@@ -30,11 +30,11 @@ import io.jsonwebtoken.JwtException;
  * All other services use the beans defined here — they load only the public key for validation.
  *
  * <p>The filter bean is only created in SERVLET web application contexts — pure Kafka consumer
- * services (processing, notification) don't need it even though they have spring-web
- * on the classpath for actuator endpoints.
+ * services (processing, notification) don't need it even though they have spring-web on the
+ * classpath for actuator endpoints.
  *
- * <p>Important: This configuration NEVER generates RSA keys. It loads the public key from
- * a shared PEM file. The private key lives exclusively in auth-service.
+ * <p>Important: This configuration NEVER generates RSA keys. It loads the public key from a shared
+ * PEM file. The private key lives exclusively in auth-service.
  */
 @Configuration
 public class JwtAutoConfiguration {
@@ -57,11 +57,11 @@ public class JwtAutoConfiguration {
     try {
       PublicKey publicKey = PemUtil.loadPublicKey(Path.of(publicKeyPath));
       return new JwtTokenProvider(
-          publicKey,
-          accessTokenExpirySeconds, refreshTokenExpirySeconds, issuer);
+          publicKey, accessTokenExpirySeconds, refreshTokenExpirySeconds, issuer);
     } catch (Exception e) {
       throw new IllegalStateException(
-          "Failed to load JWT public key from " + publicKeyPath
+          "Failed to load JWT public key from "
+              + publicKeyPath
               + ". Ensure the keys/ directory is mounted at /keys in the container "
               + "and contains public.pem.",
           e);
@@ -69,9 +69,9 @@ public class JwtAutoConfiguration {
   }
 
   /**
-   * JWT filter for services that expose HTTP APIs (upload, download, admin, metadata).
-   * NOT created for processing-service or notification-service (pure consumers).
-   * NOT created if auth-service provides its own (ConditionalOnMissingBean).
+   * JWT filter for services that expose HTTP APIs (upload, download, admin, metadata). NOT created
+   * for processing-service or notification-service (pure consumers). NOT created if auth-service
+   * provides its own (ConditionalOnMissingBean).
    */
   @Bean("jwtAuthFilter")
   @ConditionalOnMissingBean(name = "jwtAuthFilter")
@@ -82,8 +82,9 @@ public class JwtAutoConfiguration {
       private static final String BEARER_PREFIX = "Bearer ";
 
       @Override
-      protected void doFilterInternal(HttpServletRequest request,
-          HttpServletResponse response, FilterChain chain) throws ServletException, IOException {
+      protected void doFilterInternal(
+          HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+          throws ServletException, IOException {
 
         String header = request.getHeader(AUTHORIZATION_HEADER);
         if (StringUtils.hasText(header) && header.startsWith(BEARER_PREFIX)) {
@@ -94,13 +95,14 @@ public class JwtAutoConfiguration {
               @SuppressWarnings("unchecked")
               List<String> scopes = claims.get(JwtTokenProvider.CLAIM_SCOPES, List.class);
 
-              VaultFlowUserPrincipal principal = new VaultFlowUserPrincipal(
-                  claims.getSubject(),
-                  claims.get(JwtTokenProvider.CLAIM_EMAIL, String.class),
-                  claims.get(JwtTokenProvider.CLAIM_ORG_ID, String.class),
-                  claims.get(JwtTokenProvider.CLAIM_ROLE, String.class),
-                  scopes != null ? scopes : List.of(),
-                  MDC.get(CorrelationIdFilter.MDC_CORRELATION_ID));
+              VaultFlowUserPrincipal principal =
+                  new VaultFlowUserPrincipal(
+                      claims.getSubject(),
+                      claims.get(JwtTokenProvider.CLAIM_EMAIL, String.class),
+                      claims.get(JwtTokenProvider.CLAIM_ORG_ID, String.class),
+                      claims.get(JwtTokenProvider.CLAIM_ROLE, String.class),
+                      scopes != null ? scopes : List.of(),
+                      MDC.get(CorrelationIdFilter.MDC_CORRELATION_ID));
 
               MDC.put(CorrelationIdFilter.MDC_USER_ID, principal.userId());
               MDC.put(CorrelationIdFilter.MDC_ORG_ID, principal.orgId());

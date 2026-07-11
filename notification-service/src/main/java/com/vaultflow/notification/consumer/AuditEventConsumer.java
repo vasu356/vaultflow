@@ -17,10 +17,9 @@ import org.springframework.stereotype.Component;
 /**
  * Consumes audit events and file-processed events from Kafka.
  *
- * Uses Object as the ConsumerRecord value type because the listener container
- * factory deserializes to Object (supporting multiple event types on the same factory).
- * We then use Jackson to convert the LinkedHashMap (default JSON deserialization) to
- * the specific event type.
+ * <p>Uses Object as the ConsumerRecord value type because the listener container factory
+ * deserializes to Object (supporting multiple event types on the same factory). We then use Jackson
+ * to convert the LinkedHashMap (default JSON deserialization) to the specific event type.
  */
 @Component
 @RequiredArgsConstructor
@@ -29,8 +28,8 @@ public class AuditEventConsumer {
 
   private final JdbcTemplate jdbc;
 
-  private static final ObjectMapper MAPPER = new ObjectMapper()
-      .registerModule(new JavaTimeModule());
+  private static final ObjectMapper MAPPER =
+      new ObjectMapper().registerModule(new JavaTimeModule());
 
   @KafkaListener(
       topics = "audit.events",
@@ -46,7 +45,8 @@ public class AuditEventConsumer {
         return;
       }
 
-      jdbc.update("""
+      jdbc.update(
+          """
           INSERT INTO audit_logs
             (id, org_id, user_id, action, resource_type, resource_id,
              ip_address, correlation_id, outcome, metadata, occurred_at)
@@ -69,8 +69,12 @@ public class AuditEventConsumer {
       log.debug("Audit event persisted: eventId={} action={}", event.eventId(), event.action());
 
     } catch (Exception e) {
-      log.error("Failed to persist audit event from partition={} offset={}: {}",
-          record.partition(), record.offset(), e.getMessage(), e);
+      log.error(
+          "Failed to persist audit event from partition={} offset={}: {}",
+          record.partition(),
+          record.offset(),
+          e.getMessage(),
+          e);
       throw new RuntimeException("Audit event persistence failed", e);
     }
   }
@@ -87,8 +91,11 @@ public class AuditEventConsumer {
         ack.acknowledge();
         return;
       }
-      log.info("File processing result: objectVersionId={} type={} status={}",
-          event.objectVersionId(), event.processingType(), event.status());
+      log.info(
+          "File processing result: objectVersionId={} type={} status={}",
+          event.objectVersionId(),
+          event.processingType(),
+          event.status());
       // Webhook delivery would go here — for now log and ack
       ack.acknowledge();
     } catch (Exception e) {

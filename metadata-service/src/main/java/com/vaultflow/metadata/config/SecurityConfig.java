@@ -1,7 +1,6 @@
 package com.vaultflow.metadata.config;
 
 import com.vaultflow.common.tracing.CorrelationIdFilter;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,6 +18,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
+  private static final String UNAUTHORIZED_BODY =
+      "{\"errorCode\":\"UNAUTHORIZED\",\"message\":\"Authentication required\",\"status\":401}";
+
   private final OncePerRequestFilter jwtAuthFilter;
   private final CorrelationIdFilter correlationIdFilter;
 
@@ -29,25 +31,28 @@ public class SecurityConfig {
     this.correlationIdFilter = correlationIdFilter;
   }
 
-    @Qualifier("jwtAuthFilter")
-    @Bean
+  @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    return http
-        .csrf(AbstractHttpConfigurer::disable)
+    return http.csrf(AbstractHttpConfigurer::disable)
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-            .requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
-            .anyRequest().authenticated())
+        .authorizeHttpRequests(
+            auth ->
+                auth.requestMatchers("/actuator/health", "/actuator/info")
+                    .permitAll()
+                    .requestMatchers("/v3/api-docs/**", "/swagger-ui/**")
+                    .permitAll()
+                    .anyRequest()
+                    .authenticated())
         .addFilterBefore(correlationIdFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-        .exceptionHandling(ex -> ex
-            .authenticationEntryPoint((req, res, e) -> {
-              res.setStatus(401);
-              res.setContentType("application/json");
-              res.getWriter().write(
-                  "{\"errorCode\":\"UNAUTHORIZED\",\"message\":\"Authentication required\",\"status\":401}");
-            }))
+        .exceptionHandling(
+            ex ->
+                ex.authenticationEntryPoint(
+                    (req, res, e) -> {
+                      res.setStatus(401);
+                      res.setContentType("application/json");
+                      res.getWriter().write(UNAUTHORIZED_BODY);
+                    }))
         .build();
   }
 }

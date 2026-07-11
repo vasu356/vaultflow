@@ -7,10 +7,15 @@ import lombok.*;
 
 @Entity
 @Table(name = "upload_parts")
-@Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class UploadPart {
 
-  @Id @GeneratedValue(strategy = GenerationType.UUID)
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
   private UUID id;
 
   @Column(name = "session_id", nullable = false)

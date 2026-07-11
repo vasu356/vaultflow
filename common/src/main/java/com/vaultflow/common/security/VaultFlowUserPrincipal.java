@@ -9,11 +9,11 @@ import org.springframework.security.core.userdetails.UserDetails;
 /**
  * Spring Security principal populated from JWT claims on every authenticated request.
  *
- * <p>This is the central identity object — injected into controllers via {@code @AuthenticationPrincipal}.
- * Carries all context needed for RBAC checks without requiring a DB lookup per request.
+ * <p>This is the central identity object — injected into controllers via
+ * {@code @AuthenticationPrincipal}. Carries all context needed for RBAC checks without requiring a
+ * DB lookup per request.
  *
- * <p>Role hierarchy enforced at service layer:
- * OWNER > ADMIN > EDITOR > VIEWER
+ * <p>Role hierarchy enforced at service layer: OWNER > ADMIN > EDITOR > VIEWER
  */
 public record VaultFlowUserPrincipal(
     String userId,

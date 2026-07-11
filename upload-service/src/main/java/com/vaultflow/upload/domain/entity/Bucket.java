@@ -9,9 +9,14 @@ import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "buckets")
-@Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Bucket {
-  @Id @GeneratedValue(strategy = GenerationType.UUID)
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
   private UUID id;
 
   @Column(name = "org_id", nullable = false)
@@ -53,5 +58,7 @@ public class Bucket {
   private Instant updatedAt = Instant.now();
 
   @PreUpdate
-  void onUpdate() { this.updatedAt = Instant.now(); }
+  void onUpdate() {
+    this.updatedAt = Instant.now();
+  }
 }

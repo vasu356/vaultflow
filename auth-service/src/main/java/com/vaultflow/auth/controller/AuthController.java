@@ -16,7 +16,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -31,8 +37,7 @@ public class AuthController {
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(summary = "Register a new organization and owner account")
   public ResponseEntity<TokenResponse> register(
-      @Valid @RequestBody RegisterOrganizationRequest request,
-      HttpServletRequest httpRequest) {
+      @Valid @RequestBody RegisterOrganizationRequest request, HttpServletRequest httpRequest) {
     String ip = extractClientIp(httpRequest);
     TokenResponse response = authService.registerOrganization(request, ip);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -41,8 +46,7 @@ public class AuthController {
   @PostMapping("/login")
   @Operation(summary = "Authenticate and receive access + refresh tokens")
   public ResponseEntity<TokenResponse> login(
-      @Valid @RequestBody LoginRequest request,
-      HttpServletRequest httpRequest) {
+      @Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
     String ip = extractClientIp(httpRequest);
     return ResponseEntity.ok(authService.login(request, ip));
   }
@@ -50,8 +54,7 @@ public class AuthController {
   @PostMapping("/refresh")
   @Operation(summary = "Exchange a valid refresh token for a new token pair")
   public ResponseEntity<TokenResponse> refresh(
-      @Valid @RequestBody RefreshTokenRequest request,
-      HttpServletRequest httpRequest) {
+      @Valid @RequestBody RefreshTokenRequest request, HttpServletRequest httpRequest) {
     String ip = extractClientIp(httpRequest);
     return ResponseEntity.ok(authService.refreshToken(request, ip));
   }

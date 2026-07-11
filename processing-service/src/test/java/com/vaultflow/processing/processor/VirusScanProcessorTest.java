@@ -15,8 +15,7 @@ import org.junit.jupiter.api.io.TempDir;
 @DisplayName("VirusScanProcessor")
 class VirusScanProcessorTest {
 
-  @TempDir
-  Path tempDir;
+  @TempDir Path tempDir;
 
   VirusScanProcessor processor;
 
@@ -34,11 +33,23 @@ class VirusScanProcessorTest {
 
   private FileUploadedEvent makeEvent(String storageKey) {
     return new FileUploadedEvent(
-        UUID.randomUUID().toString(), 1,
-        UUID.randomUUID().toString(), UUID.randomUUID().toString(),
-        UUID.randomUUID().toString(), UUID.randomUUID().toString(),
-        UUID.randomUUID().toString(), "test.txt", storageKey,
-        "text/plain", 100L, "abc", false, false, false, true, Instant.now());
+        UUID.randomUUID().toString(),
+        1,
+        UUID.randomUUID().toString(),
+        UUID.randomUUID().toString(),
+        UUID.randomUUID().toString(),
+        UUID.randomUUID().toString(),
+        UUID.randomUUID().toString(),
+        "test.txt",
+        storageKey,
+        "text/plain",
+        100L,
+        "abc",
+        false,
+        false,
+        false,
+        true,
+        Instant.now());
   }
 
   @Test

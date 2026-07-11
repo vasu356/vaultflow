@@ -17,14 +17,13 @@ import org.springframework.stereotype.Component;
 /**
  * Generates image thumbnails using Thumbnailator.
  *
- * <p>Thumbnailator is chosen over ImageIO/BufferedImage because:
- * - Handles EXIF rotation automatically
- * - Memory-efficient streaming resizing (no full decode into BufferedImage)
- * - Supports JPEG, PNG, GIF, BMP, WebP
- * - Maintains aspect ratio with quality control
+ * <p>Thumbnailator is chosen over ImageIO/BufferedImage because: - Handles EXIF rotation
+ * automatically - Memory-efficient streaming resizing (no full decode into BufferedImage) -
+ * Supports JPEG, PNG, GIF, BMP, WebP - Maintains aspect ratio with quality control
  *
- * <p>Output: 300x300 JPEG thumbnail stored at {storageBase}/thumbnails/{sha256[0:3]}/{sha256[3:6]}/{sha256}.thumb.jpg
- * The thumbnail storage key is written back to object_versions.thumbnail_key by ProcessingResultPersistenceService.
+ * <p>Output: 300x300 JPEG thumbnail stored at
+ * {storageBase}/thumbnails/{sha256[0:3]}/{sha256[3:6]}/{sha256}.thumb.jpg The thumbnail storage key
+ * is written back to object_versions.thumbnail_key by ProcessingResultPersistenceService.
  *
  * <p>Idempotent: If thumbnail already exists (re-processing), it is overwritten safely.
  */
@@ -48,14 +47,17 @@ public class ImageThumbnailProcessor {
     try {
       Path sourcePath = resolveStoragePath(event.storageKey());
       if (!Files.exists(sourcePath)) {
-        return FileProcessedEvent.failed(event.objectVersionId(), event.objectId(),
-            event.bucketId(), event.orgId(),
+        return FileProcessedEvent.failed(
+            event.objectVersionId(),
+            event.objectId(),
+            event.bucketId(),
+            event.orgId(),
             FileProcessedEvent.ProcessingType.IMAGE_THUMBNAIL,
             "Source file not found: " + event.storageKey());
       }
 
-      String thumbnailKey = "thumbnails/" + ChecksumUtil.toStoragePath(
-          event.checksumSha256()) + ".thumb.jpg";
+      String thumbnailKey =
+          "thumbnails/" + ChecksumUtil.toStoragePath(event.checksumSha256()) + ".thumb.jpg";
       Path thumbnailPath = Paths.get(storageBaseDir, thumbnailKey);
       Files.createDirectories(thumbnailPath.getParent());
 
@@ -67,27 +69,43 @@ public class ImageThumbnailProcessor {
           .toFile(thumbnailPath.toFile());
 
       long thumbnailSize = Files.size(thumbnailPath);
-      log.info("Thumbnail generated: objectVersionId={} thumbnailKey={} size={}",
-          event.objectVersionId(), thumbnailKey, thumbnailSize);
+      log.info(
+          "Thumbnail generated: objectVersionId={} thumbnailKey={} size={}",
+          event.objectVersionId(),
+          thumbnailKey,
+          thumbnailSize);
 
       meterRegistry.counter("processing.image.thumbnails.generated").increment();
       timer.stop(meterRegistry.timer("processing.image.thumbnail.duration"));
 
       return FileProcessedEvent.success(
-          event.objectVersionId(), event.objectId(), event.bucketId(), event.orgId(),
+          event.objectVersionId(),
+          event.objectId(),
+          event.bucketId(),
+          event.orgId(),
           FileProcessedEvent.ProcessingType.IMAGE_THUMBNAIL,
           Map.of(
-              "thumbnailKey", thumbnailKey,
-              "thumbnailSize", String.valueOf(thumbnailSize),
-              "dimensions", THUMBNAIL_WIDTH + "x" + THUMBNAIL_HEIGHT));
+              "thumbnailKey",
+              thumbnailKey,
+              "thumbnailSize",
+              String.valueOf(thumbnailSize),
+              "dimensions",
+              THUMBNAIL_WIDTH + "x" + THUMBNAIL_HEIGHT));
 
     } catch (Exception e) {
-      log.error("Image thumbnail failed: objectVersionId={} error={}",
-          event.objectVersionId(), e.getMessage(), e);
+      log.error(
+          "Image thumbnail failed: objectVersionId={} error={}",
+          event.objectVersionId(),
+          e.getMessage(),
+          e);
       meterRegistry.counter("processing.image.thumbnails.failed").increment();
-      return FileProcessedEvent.failed(event.objectVersionId(), event.objectId(),
-          event.bucketId(), event.orgId(),
-          FileProcessedEvent.ProcessingType.IMAGE_THUMBNAIL, e.getMessage());
+      return FileProcessedEvent.failed(
+          event.objectVersionId(),
+          event.objectId(),
+          event.bucketId(),
+          event.orgId(),
+          FileProcessedEvent.ProcessingType.IMAGE_THUMBNAIL,
+          e.getMessage());
     }
   }
 

@@ -11,7 +11,8 @@ public final class AuthRequests {
 
   public record RegisterOrganizationRequest(
       @NotBlank @Size(min = 2, max = 100) String organizationName,
-      @NotBlank @Pattern(
+      @NotBlank
+          @Pattern(
               regexp = "^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$",
               message = "Slug must be lowercase alphanumeric with hyphens, 3-63 chars")
           String organizationSlug,
@@ -20,10 +21,8 @@ public final class AuthRequests {
       @NotBlank
           @Size(min = 8, max = 128)
           @Pattern(
-              regexp =
-                  "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",
-              message =
-                  "Password must contain uppercase, lowercase, number and special character")
+              regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",
+              message = "Password must contain uppercase, lowercase, number and special character")
           String password) {}
 
   public record LoginRequest(
@@ -36,10 +35,8 @@ public final class AuthRequests {
       @NotBlank
           @Size(min = 8, max = 128)
           @Pattern(
-              regexp =
-                  "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",
-              message =
-                  "Password must contain uppercase, lowercase, number and special character")
+              regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",
+              message = "Password must contain uppercase, lowercase, number and special character")
           String newPassword) {}
 
   public record InviteUserRequest(

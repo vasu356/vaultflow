@@ -20,10 +20,10 @@ import org.springframework.stereotype.Service;
  * <p>Why Redis (not DB)? This is a hot path — every authenticated request checks the blacklist.
  * Redis O(1) GET vs DB index lookup. Redis TTL auto-expires entries — no cleanup job needed.
  *
- * <p>Trade-off: This adds a Redis round-trip to every authenticated request. Mitigated by:
- * 1. Redis Cluster with read replicas handles millions of reads/sec
- * 2. Local Caffeine L1 cache can front Redis for ultra-hot JTIs (logout-all-devices scenario)
- * 3. The alternative (session-based tokens) is worse for scalability
+ * <p>Trade-off: This adds a Redis round-trip to every authenticated request. Mitigated by: 1. Redis
+ * Cluster with read replicas handles millions of reads/sec 2. Local Caffeine L1 cache can front
+ * Redis for ultra-hot JTIs (logout-all-devices scenario) 3. The alternative (session-based tokens)
+ * is worse for scalability
  */
 @Service
 @RequiredArgsConstructor
@@ -35,8 +35,8 @@ public class TokenRevocationService {
   private final StringRedisTemplate redisTemplate;
 
   /**
-   * Add a JWT ID to the blacklist with the given TTL (should match remaining token validity).
-   * After TTL, the key auto-expires — no cleanup needed.
+   * Add a JWT ID to the blacklist with the given TTL (should match remaining token validity). After
+   * TTL, the key auto-expires — no cleanup needed.
    */
   public void blacklist(String jti, long ttlSeconds) {
     String key = BLACKLIST_PREFIX + jti;
@@ -45,8 +45,8 @@ public class TokenRevocationService {
   }
 
   /**
-   * Check if a JWT ID has been revoked. Called by JwtAuthenticationFilter on every request.
-   * Redis GET is O(1) — negligible overhead.
+   * Check if a JWT ID has been revoked. Called by JwtAuthenticationFilter on every request. Redis
+   * GET is O(1) — negligible overhead.
    */
   public boolean isRevoked(String jti) {
     String key = BLACKLIST_PREFIX + jti;

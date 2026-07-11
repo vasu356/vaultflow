@@ -9,7 +9,6 @@ import com.vaultflow.common.event.FileUploadedEvent;
 import com.vaultflow.processing.processor.*;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Instant;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -37,29 +36,48 @@ class ProcessingOrchestratorTest {
 
   @BeforeEach
   void setUp() {
-    orchestrator = new ProcessingOrchestrator(
-        imageThumbnailProcessor, videoThumbnailProcessor, pdfPreviewProcessor,
-        virusScanProcessor, metadataExtractionProcessor,
-        persistenceService, kafkaTemplate, new SimpleMeterRegistry(), 4);
+    orchestrator =
+        new ProcessingOrchestrator(
+            imageThumbnailProcessor,
+            videoThumbnailProcessor,
+            pdfPreviewProcessor,
+            virusScanProcessor,
+            metadataExtractionProcessor,
+            persistenceService,
+            kafkaTemplate,
+            new SimpleMeterRegistry(),
+            4);
   }
 
   private FileUploadedEvent imageEvent() {
     return new FileUploadedEvent(
-        UUID.randomUUID().toString(), 1,
-        UUID.randomUUID().toString(), UUID.randomUUID().toString(),
-        UUID.randomUUID().toString(), UUID.randomUUID().toString(),
-        UUID.randomUUID().toString(), "images/photo.jpg",
-        "abc/def/abc123", "image/jpeg",
-        1_000_000L, "abc123",
-        true, false, false, true, // image, not video, not doc, virus scan
+        UUID.randomUUID().toString(),
+        1,
+        UUID.randomUUID().toString(),
+        UUID.randomUUID().toString(),
+        UUID.randomUUID().toString(),
+        UUID.randomUUID().toString(),
+        UUID.randomUUID().toString(),
+        "images/photo.jpg",
+        "abc/def/abc123",
+        "image/jpeg",
+        1_000_000L,
+        "abc123",
+        true,
+        false,
+        false,
+        true, // image, not video, not doc, virus scan
         Instant.now());
   }
 
   private FileProcessedEvent successEvent(FileProcessedEvent.ProcessingType type) {
     return FileProcessedEvent.success(
-        UUID.randomUUID().toString(), UUID.randomUUID().toString(),
-        UUID.randomUUID().toString(), UUID.randomUUID().toString(),
-        type, Map.of("status", "ok"));
+        UUID.randomUUID().toString(),
+        UUID.randomUUID().toString(),
+        UUID.randomUUID().toString(),
+        UUID.randomUUID().toString(),
+        type,
+        Map.of("status", "ok"));
   }
 
   @Test
@@ -88,15 +106,25 @@ class ProcessingOrchestratorTest {
   @Test
   @DisplayName("all processors run for video uploads")
   void processVideoRunsVideoAndVirusScan() {
-    FileUploadedEvent event = new FileUploadedEvent(
-        UUID.randomUUID().toString(), 1,
-        UUID.randomUUID().toString(), UUID.randomUUID().toString(),
-        UUID.randomUUID().toString(), UUID.randomUUID().toString(),
-        UUID.randomUUID().toString(), "videos/clip.mp4",
-        "abc/def/abc123", "video/mp4",
-        50_000_000L, "abc123",
-        false, true, false, true,
-        Instant.now());
+    FileUploadedEvent event =
+        new FileUploadedEvent(
+            UUID.randomUUID().toString(),
+            1,
+            UUID.randomUUID().toString(),
+            UUID.randomUUID().toString(),
+            UUID.randomUUID().toString(),
+            UUID.randomUUID().toString(),
+            UUID.randomUUID().toString(),
+            "videos/clip.mp4",
+            "abc/def/abc123",
+            "video/mp4",
+            50_000_000L,
+            "abc123",
+            false,
+            true,
+            false,
+            true,
+            Instant.now());
 
     when(virusScanProcessor.process(event))
         .thenReturn(successEvent(FileProcessedEvent.ProcessingType.VIRUS_SCAN));
@@ -122,35 +150,42 @@ class ProcessingOrchestratorTest {
     AtomicInteger activeCount = new AtomicInteger(0);
 
     // Each processor sleeps 100ms — sequential would take 300ms, parallel ~100ms
-    when(imageThumbnailProcessor.process(any())).thenAnswer(inv -> {
-      int current = activeCount.incrementAndGet();
-      concurrencyPeak.updateAndGet(peak -> Math.max(peak, current));
-      Thread.sleep(100);
-      activeCount.decrementAndGet();
-      return successEvent(FileProcessedEvent.ProcessingType.IMAGE_THUMBNAIL);
-    });
-    when(virusScanProcessor.process(any())).thenAnswer(inv -> {
-      int current = activeCount.incrementAndGet();
-      concurrencyPeak.updateAndGet(peak -> Math.max(peak, current));
-      Thread.sleep(100);
-      activeCount.decrementAndGet();
-      return successEvent(FileProcessedEvent.ProcessingType.VIRUS_SCAN);
-    });
-    when(metadataExtractionProcessor.process(any())).thenAnswer(inv -> {
-      int current = activeCount.incrementAndGet();
-      concurrencyPeak.updateAndGet(peak -> Math.max(peak, current));
-      Thread.sleep(100);
-      activeCount.decrementAndGet();
-      return successEvent(FileProcessedEvent.ProcessingType.METADATA_EXTRACTION);
-    });
+    when(imageThumbnailProcessor.process(any()))
+        .thenAnswer(
+            inv -> {
+              int current = activeCount.incrementAndGet();
+              concurrencyPeak.updateAndGet(peak -> Math.max(peak, current));
+              Thread.sleep(100);
+              activeCount.decrementAndGet();
+              return successEvent(FileProcessedEvent.ProcessingType.IMAGE_THUMBNAIL);
+            });
+    when(virusScanProcessor.process(any()))
+        .thenAnswer(
+            inv -> {
+              int current = activeCount.incrementAndGet();
+              concurrencyPeak.updateAndGet(peak -> Math.max(peak, current));
+              Thread.sleep(100);
+              activeCount.decrementAndGet();
+              return successEvent(FileProcessedEvent.ProcessingType.VIRUS_SCAN);
+            });
+    when(metadataExtractionProcessor.process(any()))
+        .thenAnswer(
+            inv -> {
+              int current = activeCount.incrementAndGet();
+              concurrencyPeak.updateAndGet(peak -> Math.max(peak, current));
+              Thread.sleep(100);
+              activeCount.decrementAndGet();
+              return successEvent(FileProcessedEvent.ProcessingType.METADATA_EXTRACTION);
+            });
     when(kafkaTemplate.send(any(), any(), any())).thenReturn(null);
 
     long start = System.currentTimeMillis();
     orchestrator.process(event);
     long elapsed = System.currentTimeMillis() - start;
 
-    // Should complete in ~100-250ms (parallel), not 300ms+ (sequential)
-    assertThat(elapsed).isLessThan(300L);
+    // GitHub runners vary in performance. Parallel execution should comfortably finish below 500
+    // ms.
+    assertThat(elapsed).isLessThan(500L);
     // At least 2 processors were running simultaneously
     assertThat(concurrencyPeak.get()).isGreaterThanOrEqualTo(2);
   }

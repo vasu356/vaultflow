@@ -31,10 +31,11 @@ class EtagUtilTest {
   @Test
   @DisplayName("multipart ETag is deterministic")
   void multipartDeterministic() {
-    List<String> parts = List.of(
-        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-        "cccccccccccccccccccccccccccccccc");
+    List<String> parts =
+        List.of(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "cccccccccccccccccccccccccccccccc");
     String first = EtagUtil.multipartEtag(parts);
     String second = EtagUtil.multipartEtag(parts);
     assertThat(first).isEqualTo(second);

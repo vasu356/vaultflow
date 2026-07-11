@@ -13,7 +13,12 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/admin")
@@ -35,8 +40,7 @@ public class AdminController {
   @PreAuthorize("hasRole('ADMIN') or hasRole('OWNER')")
   @Operation(summary = "Daily upload volume for the past N days")
   public ResponseEntity<List<Map<String, Object>>> getDailyUploads(
-      @RequestParam("days") int days,
-      @AuthenticationPrincipal VaultFlowUserPrincipal principal) {
+      @RequestParam("days") int days, @AuthenticationPrincipal VaultFlowUserPrincipal principal) {
     return ResponseEntity.ok(adminService.getDailyUploadStats(principal.orgId(), days));
   }
 
@@ -44,8 +48,7 @@ public class AdminController {
   @PreAuthorize("hasRole('ADMIN') or hasRole('OWNER')")
   @Operation(summary = "Top buckets by storage consumption")
   public ResponseEntity<List<Map<String, Object>>> getTopBuckets(
-      @RequestParam("limit") int limit,
-      @AuthenticationPrincipal VaultFlowUserPrincipal principal) {
+      @RequestParam("limit") int limit, @AuthenticationPrincipal VaultFlowUserPrincipal principal) {
     return ResponseEntity.ok(adminService.getTopBucketsByStorage(principal.orgId(), limit));
   }
 
@@ -63,8 +66,10 @@ public class AdminController {
   public ResponseEntity<PageResponse<Map<String, Object>>> getAuditLog(
       @RequestParam(required = false) String action,
       @RequestParam(required = false) String userId,
-      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
-      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+          Instant from,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+          Instant to,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "50") int size,
       @AuthenticationPrincipal VaultFlowUserPrincipal principal) {

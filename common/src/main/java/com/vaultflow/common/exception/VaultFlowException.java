@@ -19,8 +19,7 @@ public class VaultFlowException extends RuntimeException {
     this.errorCode = errorCode;
   }
 
-  public VaultFlowException(
-      String message, HttpStatus status, String errorCode, Throwable cause) {
+  public VaultFlowException(String message, HttpStatus status, String errorCode, Throwable cause) {
     super(message, cause);
     this.status = status;
     this.errorCode = errorCode;

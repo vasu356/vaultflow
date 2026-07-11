@@ -12,13 +12,13 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Scheduled job to remove expired refresh tokens from the database.
  *
- * <p>Why not rely on Redis TTL alone? Refresh tokens are in PostgreSQL for durability and auditability.
- * We keep expired tokens for 30 days after expiry for forensics (token theft investigation),
- * then delete for storage hygiene.
+ * <p>Why not rely on Redis TTL alone? Refresh tokens are in PostgreSQL for durability and
+ * auditability. We keep expired tokens for 30 days after expiry for forensics (token theft
+ * investigation), then delete for storage hygiene.
  *
- * <p>Runs nightly at 2 AM. In a multi-pod environment, Spring Scheduling runs on all pods.
- * This is safe because DELETE WHERE expires_at < cutoff is idempotent — duplicate deletes
- * have no effect. For strict single-execution, use a distributed lock (ShedLock pattern).
+ * <p>Runs nightly at 2 AM. In a multi-pod environment, Spring Scheduling runs on all pods. This is
+ * safe because DELETE WHERE expires_at < cutoff is idempotent — duplicate deletes have no effect.
+ * For strict single-execution, use a distributed lock (ShedLock pattern).
  */
 @Component
 @RequiredArgsConstructor

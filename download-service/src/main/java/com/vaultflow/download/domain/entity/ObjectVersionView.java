@@ -6,12 +6,12 @@ import java.util.UUID;
 /**
  * Plain DTO (not a JPA entity) carrying all data needed for a download response.
  *
- * WHY NOT A JPA ENTITY: The download query is a multi-table JOIN across object_versions,
- * objects, and buckets. JPA @Transient fields are not populated by native queries.
- * Using a plain record populated by a JDBC RowMapper gives us full control, avoids
- * the N+1 risk of lazy associations, and is read-only by design.
+ * <p>WHY NOT A JPA ENTITY: The download query is a multi-table JOIN across object_versions,
+ * objects, and buckets. JPA @Transient fields are not populated by native queries. Using a plain
+ * record populated by a JDBC RowMapper gives us full control, avoids the N+1 risk of lazy
+ * associations, and is read-only by design.
  *
- * The JpaRepository in the old design is replaced with a JdbcTemplate query in
+ * <p>The JpaRepository in the old design is replaced with a JdbcTemplate query in
  * ObjectVersionViewRepository.
  */
 public record ObjectVersionView(
@@ -33,8 +33,7 @@ public record ObjectVersionView(
     // JOIN fields
     UUID bucketId,
     String objectKey,
-    UUID orgId
-) {
+    UUID orgId) {
   public boolean isInfected() {
     return "INFECTED".equals(virusScanStatus);
   }

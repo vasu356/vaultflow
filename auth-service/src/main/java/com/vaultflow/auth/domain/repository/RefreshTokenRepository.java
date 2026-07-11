@@ -27,7 +27,8 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
   /** Revoke all active tokens for a user (logout all devices). */
   @Modifying
   @Query(
-      "UPDATE RefreshToken t SET t.revoked = true, t.revokedAt = :now, t.revokeReason = 'LOGOUT_ALL'"
+      "UPDATE RefreshToken t"
+          + " SET t.revoked = true, t.revokedAt = :now, t.revokeReason = 'LOGOUT_ALL'"
           + " WHERE t.user.id = :userId AND t.revoked = false")
   void revokeAllForUser(@Param("userId") UUID userId, @Param("now") Instant now);
 

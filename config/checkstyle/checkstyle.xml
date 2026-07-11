@@ -1,0 +1,84 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+    "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+    "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<!--
+  VaultFlow Checkstyle Configuration
+
+  Philosophy: ban wildcard imports for production code where explicit imports
+  improve readability. Allow wildcards for annotation-heavy and test packages
+  where explicit listing creates boilerplate with zero readability gain.
+
+  Permitted wildcards
+  ───────────────────
+  Production (annotation/utility packages):
+    jakarta.persistence.*          JPA entity annotations
+    jakarta.validation.constraints.*  Bean Validation annotations
+    lombok.*                       Lombok compile-time annotations
+    org.springframework.web.bind.annotation.*  Spring MVC annotations
+    org.springframework.http.*     Spring HTTP types (HttpStatus, etc.)
+    java.io.*                      Standard I/O (storage adapters)
+    java.nio.file.*                NIO file API (storage adapters)
+    java.util.*                    Collections API
+    java.awt.*                     AWT (image/video processors only)
+    org.springframework.kafka.core.*  Kafka producer/template types
+
+  Application internal (avoids repeating 10+ entity/repo imports per service):
+    com.vaultflow.upload.domain.entity.*
+    com.vaultflow.upload.domain.repository.*
+    com.vaultflow.upload.dto.request.*
+    com.vaultflow.upload.dto.response.*
+    com.vaultflow.processing.processor.*
+
+  Test packages (universal test infrastructure; listing all @Test/@BeforeEach/
+  @Nested/@DisplayName etc. is extreme boilerplate):
+    org.junit.jupiter.api.*        JUnit 5 annotations
+    org.mockito.*                  Mockito annotations and matchers (non-static)
+    org.assertj.core.api.*         AssertJ (non-static)
+
+  Static wildcards (test-only):
+    static org.mockito.Mockito.*           Mockito static methods (verify, when, etc.)
+    static org.mockito.ArgumentMatchers.*  Argument matchers (any, eq, etc.)
+    static org.assertj.core.api.Assertions.*  AssertJ entry points (assertThat, etc.)
+    static io.restassured.RestAssured.*    REST Assured DSL
+    static org.hamcrest.Matchers.*         Hamcrest matchers
+-->
+
+<module name="Checker">
+  <module name="TreeWalker">
+
+    <!-- Ban wildcard imports with specific permitted exceptions -->
+    <module name="AvoidStarImport">
+      <property name="excludes" value="
+        jakarta.persistence,
+        jakarta.validation.constraints,
+        lombok,
+        org.springframework.web.bind.annotation,
+        org.springframework.http,
+        java.io,
+        java.nio.file,
+        java.util,
+        java.awt,
+        org.springframework.kafka.core,
+        com.vaultflow.upload.domain.entity,
+        com.vaultflow.upload.domain.repository,
+        com.vaultflow.upload.dto.request.UploadRequests,
+        com.vaultflow.upload.dto.response.UploadResponses,
+        com.vaultflow.processing.processor,
+        org.junit.jupiter.api,
+        org.mockito,
+        org.assertj.core.api
+      "/>
+      <!-- Also allow static wildcards for test infrastructure -->
+      <property name="allowStaticMemberImports" value="true"/>
+    </module>
+
+    <!-- No duplicate imports -->
+    <module name="RedundantImport"/>
+
+    <!-- No unused imports -->
+    <module name="UnusedImports"/>
+
+  </module>
+</module>

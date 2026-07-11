@@ -33,23 +33,29 @@ public class ProcessingResultPersistenceService {
       try {
         applyResult(versionId, result);
       } catch (Exception e) {
-        log.error("Failed to persist processing result: type={} versionId={} error={}",
-            result.processingType(), objectVersionId, e.getMessage(), e);
+        log.error(
+            "Failed to persist processing result: type={} versionId={} error={}",
+            result.processingType(),
+            objectVersionId,
+            e.getMessage(),
+            e);
       }
     }
 
     // Update overall processing status
-    boolean allComplete = results.stream()
-        .allMatch(r -> r.status() != FileProcessedEvent.ProcessingStatus.FAILED);
-    boolean anyFailed = results.stream()
-        .anyMatch(r -> r.status() == FileProcessedEvent.ProcessingStatus.FAILED);
+    boolean allComplete =
+        results.stream().allMatch(r -> r.status() != FileProcessedEvent.ProcessingStatus.FAILED);
+    boolean anyFailed =
+        results.stream().anyMatch(r -> r.status() == FileProcessedEvent.ProcessingStatus.FAILED);
 
     String overallStatus = anyFailed ? "FAILED" : "COMPLETED";
     jdbc.update(
         "UPDATE object_versions SET processing_status = ? WHERE id = ?::uuid",
-        overallStatus, objectVersionId);
+        overallStatus,
+        objectVersionId);
 
-    log.info("Processing results persisted: versionId={} status={}", objectVersionId, overallStatus);
+    log.info(
+        "Processing results persisted: versionId={} status={}", objectVersionId, overallStatus);
   }
 
   private void applyResult(UUID versionId, FileProcessedEvent result) {
@@ -57,14 +63,17 @@ public class ProcessingResultPersistenceService {
       String scanStatus = result.resultMetadata().getOrDefault("status", "ERROR");
       jdbc.update(
           "UPDATE object_versions SET virus_scan_status = ?, virus_scan_at = ? WHERE id = ?::uuid",
-          scanStatus, Timestamp.from(Instant.now()), versionId.toString());
+          scanStatus,
+          Timestamp.from(Instant.now()),
+          versionId.toString());
 
     } else if (result.processingType() == ProcessingType.IMAGE_THUMBNAIL) {
       String thumbnailKey = result.resultMetadata().get("thumbnailKey");
       if (thumbnailKey != null) {
         jdbc.update(
             "UPDATE object_versions SET thumbnail_key = ? WHERE id = ?::uuid",
-            thumbnailKey, versionId.toString());
+            thumbnailKey,
+            versionId.toString());
       }
 
     } else if (result.processingType() == ProcessingType.VIDEO_THUMBNAIL) {
@@ -72,7 +81,8 @@ public class ProcessingResultPersistenceService {
       if (thumbnailKey != null) {
         jdbc.update(
             "UPDATE object_versions SET thumbnail_key = ? WHERE id = ?::uuid",
-            thumbnailKey, versionId.toString());
+            thumbnailKey,
+            versionId.toString());
       }
 
     } else if (result.processingType() == ProcessingType.PDF_PREVIEW) {
@@ -80,7 +90,8 @@ public class ProcessingResultPersistenceService {
       if (previewKey != null) {
         jdbc.update(
             "UPDATE object_versions SET preview_key = ? WHERE id = ?::uuid",
-            previewKey, versionId.toString());
+            previewKey,
+            versionId.toString());
       }
     }
   }

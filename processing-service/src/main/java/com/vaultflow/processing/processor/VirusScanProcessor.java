@@ -14,19 +14,19 @@ import org.springframework.stereotype.Component;
 /**
  * Simulated virus scanner.
  *
- * <p>Production integration path: Replace this with ClamAV via unix socket (clamd + jclamav
- * client library) or a cloud AV API (VirusTotal, Metadefender). The interface is identical —
+ * <p>Production integration path: Replace this with ClamAV via unix socket (clamd + jclamav client
+ * library) or a cloud AV API (VirusTotal, Metadefender). The interface is identical —
  * ProcessingOrchestrator calls process(event) and receives FileProcessedEvent with CLEAN/INFECTED.
  *
  * <p>Simulation: Detects EICAR test string (industry-standard AV test pattern) in uploaded files.
  * Any file containing the EICAR string is flagged as INFECTED. All others are marked CLEAN.
  *
- * <p>EICAR test string: X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*
- * Safe to include in test files — it is not a real virus, just a standard test pattern.
+ * <p>EICAR test string: X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H* Safe
+ * to include in test files — it is not a real virus, just a standard test pattern.
  *
- * <p>On INFECTED: The object_versions.virus_scan_status is set to INFECTED.
- * Downloads of infected files are blocked by download-service (checks this status).
- * Admin is notified via notification-service.
+ * <p>On INFECTED: The object_versions.virus_scan_status is set to INFECTED. Downloads of infected
+ * files are blocked by download-service (checks this status). Admin is notified via
+ * notification-service.
  */
 @Component
 @RequiredArgsConstructor
@@ -52,19 +52,28 @@ public class VirusScanProcessor {
       Path sourcePath = Paths.get(storageBaseDir, event.storageKey());
 
       if (!Files.exists(sourcePath)) {
-        return FileProcessedEvent.failed(event.objectVersionId(), event.objectId(),
-            event.bucketId(), event.orgId(),
-            FileProcessedEvent.ProcessingType.VIRUS_SCAN, "Source file not found");
+        return FileProcessedEvent.failed(
+            event.objectVersionId(),
+            event.objectId(),
+            event.bucketId(),
+            event.orgId(),
+            FileProcessedEvent.ProcessingType.VIRUS_SCAN,
+            "Source file not found");
       }
 
       // Skip scan for files exceeding max size — mark as SKIPPED with warning
       long fileSize = Files.size(sourcePath);
       if (fileSize > maxFileSizeBytes) {
-        log.warn("File too large for virus scan, skipping: objectVersionId={} size={}",
-            event.objectVersionId(), fileSize);
+        log.warn(
+            "File too large for virus scan, skipping: objectVersionId={} size={}",
+            event.objectVersionId(),
+            fileSize);
         meterRegistry.counter("processing.virus.skipped").increment();
-        return FileProcessedEvent.success(event.objectVersionId(), event.objectId(),
-            event.bucketId(), event.orgId(),
+        return FileProcessedEvent.success(
+            event.objectVersionId(),
+            event.objectId(),
+            event.bucketId(),
+            event.orgId(),
             FileProcessedEvent.ProcessingType.VIRUS_SCAN,
             Map.of("status", "SKIPPED", "reason", "FILE_TOO_LARGE"));
       }
@@ -72,33 +81,49 @@ public class VirusScanProcessor {
       boolean infected = scanForThreats(sourcePath);
 
       if (infected) {
-        log.warn("INFECTED file detected: objectVersionId={} storageKey={}",
-            event.objectVersionId(), event.storageKey());
+        log.warn(
+            "INFECTED file detected: objectVersionId={} storageKey={}",
+            event.objectVersionId(),
+            event.storageKey());
         meterRegistry.counter("processing.virus.infected").increment();
-        return FileProcessedEvent.success(event.objectVersionId(), event.objectId(),
-            event.bucketId(), event.orgId(),
+        return FileProcessedEvent.success(
+            event.objectVersionId(),
+            event.objectId(),
+            event.bucketId(),
+            event.orgId(),
             FileProcessedEvent.ProcessingType.VIRUS_SCAN,
             Map.of("status", "INFECTED", "threat", "EICAR.Test.File"));
       }
 
       meterRegistry.counter("processing.virus.clean").increment();
-      return FileProcessedEvent.success(event.objectVersionId(), event.objectId(),
-          event.bucketId(), event.orgId(),
+      return FileProcessedEvent.success(
+          event.objectVersionId(),
+          event.objectId(),
+          event.bucketId(),
+          event.orgId(),
           FileProcessedEvent.ProcessingType.VIRUS_SCAN,
           Map.of("status", "CLEAN"));
 
     } catch (Exception e) {
-      log.error("Virus scan failed: objectVersionId={} error={}",
-          event.objectVersionId(), e.getMessage(), e);
+      log.error(
+          "Virus scan failed: objectVersionId={} error={}",
+          event.objectVersionId(),
+          e.getMessage(),
+          e);
       meterRegistry.counter("processing.virus.errors").increment();
-      return FileProcessedEvent.failed(event.objectVersionId(), event.objectId(),
-          event.bucketId(), event.orgId(),
-          FileProcessedEvent.ProcessingType.VIRUS_SCAN, e.getMessage());
+      return FileProcessedEvent.failed(
+          event.objectVersionId(),
+          event.objectId(),
+          event.bucketId(),
+          event.orgId(),
+          FileProcessedEvent.ProcessingType.VIRUS_SCAN,
+          e.getMessage());
     }
   }
 
   private boolean scanForThreats(Path filePath) throws IOException {
-    try (InputStream in = new BufferedInputStream(Files.newInputStream(filePath), SCAN_BUFFER_SIZE)) {
+    try (InputStream in =
+        new BufferedInputStream(Files.newInputStream(filePath), SCAN_BUFFER_SIZE)) {
       byte[] buffer = new byte[SCAN_BUFFER_SIZE];
       int bytesRead;
       // Sliding window scan for EICAR pattern

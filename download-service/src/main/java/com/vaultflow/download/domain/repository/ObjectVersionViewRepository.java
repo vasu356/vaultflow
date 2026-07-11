@@ -12,12 +12,10 @@ import org.springframework.stereotype.Repository;
 /**
  * JDBC-based repository for ObjectVersionView.
  *
- * Uses JdbcTemplate instead of JpaRepository because:
- * 1. The query joins three tables — JPA would require multiple entity relationships
- *    and separate queries or complex JPQL
- * 2. Result includes columns from different tables that don't map to one entity
- * 3. This is a read-only query — no ORM overhead needed
- * 4. Full control over the exact SQL for performance tuning
+ * <p>Uses JdbcTemplate instead of JpaRepository because: 1. The query joins three tables — JPA
+ * would require multiple entity relationships and separate queries or complex JPQL 2. Result
+ * includes columns from different tables that don't map to one entity 3. This is a read-only query
+ * — no ORM overhead needed 4. Full control over the exact SQL for performance tuning
  */
 @Repository
 @RequiredArgsConstructor
@@ -25,7 +23,8 @@ public class ObjectVersionViewRepository {
 
   private final JdbcTemplate jdbc;
 
-  private static final String FIND_CURRENT_SQL = """
+  private static final String FIND_CURRENT_SQL =
+      """
       SELECT
         ov.id, ov.object_id, ov.storage_key, ov.size_bytes,
         ov.checksum_sha256, ov.etag, ov.version_number,
@@ -46,7 +45,8 @@ public class ObjectVersionViewRepository {
       LIMIT 1
       """;
 
-  private static final String FIND_BY_ID_SQL = """
+  private static final String FIND_BY_ID_SQL =
+      """
       SELECT
         ov.id, ov.object_id, ov.storage_key, ov.size_bytes,
         ov.checksum_sha256, ov.etag, ov.version_number,
@@ -64,8 +64,9 @@ public class ObjectVersionViewRepository {
 
   public Optional<ObjectVersionView> findCurrentVersionByBucketAndKey(
       UUID bucketId, String objectKey, UUID orgId) {
-    var results = jdbc.query(FIND_CURRENT_SQL, this::mapRow,
-        bucketId.toString(), objectKey, orgId.toString());
+    var results =
+        jdbc.query(
+            FIND_CURRENT_SQL, this::mapRow, bucketId.toString(), objectKey, orgId.toString());
     return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
   }
 
@@ -90,11 +91,9 @@ public class ObjectVersionViewRepository {
         rs.getString("thumbnail_key"),
         rs.getString("preview_key"),
         rs.getString("virus_scan_status"),
-        rs.getTimestamp("created_at") != null
-            ? rs.getTimestamp("created_at").toInstant() : null,
+        rs.getTimestamp("created_at") != null ? rs.getTimestamp("created_at").toInstant() : null,
         UUID.fromString(rs.getString("bucket_id")),
         rs.getString("object_key"),
-        UUID.fromString(rs.getString("org_id"))
-    );
+        UUID.fromString(rs.getString("org_id")));
   }
 }

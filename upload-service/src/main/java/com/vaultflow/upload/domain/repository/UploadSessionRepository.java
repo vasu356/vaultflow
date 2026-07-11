@@ -1,6 +1,5 @@
 package com.vaultflow.upload.domain.repository;
 
-import com.vaultflow.upload.domain.entity.UploadPart;
 import com.vaultflow.upload.domain.entity.UploadSession;
 import com.vaultflow.upload.domain.enums.UploadStatus;
 import java.time.Instant;
@@ -19,10 +18,10 @@ public interface UploadSessionRepository extends JpaRepository<UploadSession, UU
   Optional<UploadSession> findByIdAndOrgId(UUID id, UUID orgId);
 
   @Modifying
-  @Query("UPDATE UploadSession s SET s.status = 'EXPIRED' WHERE s.expiresAt < :now"
-      + " AND s.status IN ('INITIATED', 'UPLOADING')")
+  @Query(
+      "UPDATE UploadSession s SET s.status = 'EXPIRED' WHERE s.expiresAt < :now"
+          + " AND s.status IN ('INITIATED', 'UPLOADING')")
   int expireStaleSessions(@Param("now") Instant now);
 
   List<UploadSession> findByStatusIn(List<UploadStatus> statuses);
 }
-

@@ -75,9 +75,9 @@ public class DownloadController {
   }
 
   /**
-   * Get structured object metadata as JSON.
-   * Object key is passed as a query parameter to avoid Spring Boot 3 PathPatternParser
-   * restrictions on catch-all path variables followed by path segments.
+   * Get structured object metadata as JSON. Object key is passed as a query parameter to avoid
+   * Spring Boot 3 PathPatternParser restrictions on catch-all path variables followed by path
+   * segments.
    */
   @GetMapping("/buckets/{bucketId}/objects/metadata")
   @Operation(summary = "Get structured object metadata as JSON")
@@ -87,12 +87,21 @@ public class DownloadController {
       @AuthenticationPrincipal VaultFlowUserPrincipal principal) {
 
     ObjectVersionView v = downloadService.getObjectMetadata(bucketId, objectKey, principal);
-    return ResponseEntity.ok(ObjectMetadataResponse.builder()
-        .versionId(v.id()).objectId(v.objectId()).objectKey(objectKey)
-        .contentType(v.contentType()).sizeBytes(v.sizeBytes()).etag(v.etag())
-        .checksumSha256(v.checksumSha256()).versionNumber(v.versionNumber())
-        .processingStatus(v.processingStatus()).virusScanStatus(v.virusScanStatus())
-        .thumbnailKey(v.thumbnailKey()).createdAt(v.createdAt()).build());
+    return ResponseEntity.ok(
+        ObjectMetadataResponse.builder()
+            .versionId(v.id())
+            .objectId(v.objectId())
+            .objectKey(objectKey)
+            .contentType(v.contentType())
+            .sizeBytes(v.sizeBytes())
+            .etag(v.etag())
+            .checksumSha256(v.checksumSha256())
+            .versionNumber(v.versionNumber())
+            .processingStatus(v.processingStatus())
+            .virusScanStatus(v.virusScanStatus())
+            .thumbnailKey(v.thumbnailKey())
+            .createdAt(v.createdAt())
+            .build());
   }
 
   // ============================================================
@@ -105,9 +114,13 @@ public class DownloadController {
       @Valid @RequestBody CreateSignedUrlRequest request,
       @AuthenticationPrincipal VaultFlowUserPrincipal principal) {
 
-    SignedUrlResponse response = downloadService.generateSignedUrl(
-        request.objectVersionId(), request.ttlSeconds(),
-        request.maxDownloads(), request.allowedIp(), principal);
+    SignedUrlResponse response =
+        downloadService.generateSignedUrl(
+            request.objectVersionId(),
+            request.ttlSeconds(),
+            request.maxDownloads(),
+            request.allowedIp(),
+            principal);
 
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
@@ -115,9 +128,7 @@ public class DownloadController {
   @GetMapping("/download/signed")
   @Operation(summary = "Download via signed URL (no auth required)")
   public ResponseEntity<InputStreamResource> downloadSigned(
-      @RequestParam String token,
-      @RequestParam long expires,
-      HttpServletRequest request) {
+      @RequestParam String token, @RequestParam long expires, HttpServletRequest request) {
 
     String clientIp = extractClientIp(request);
     InputStream stream = downloadService.streamSignedUrl(token, clientIp);
@@ -133,8 +144,12 @@ public class DownloadController {
   // ============================================================
 
   private ResponseEntity<InputStreamResource> handleRangeRequest(
-      UUID bucketId, String objectKey, String rangeHeader,
-      ObjectVersionView metadata, HttpHeaders headers, VaultFlowUserPrincipal principal) {
+      UUID bucketId,
+      String objectKey,
+      String rangeHeader,
+      ObjectVersionView metadata,
+      HttpHeaders headers,
+      VaultFlowUserPrincipal principal) {
 
     long totalSize = metadata.sizeBytes();
     long[] range = parseRangeHeader(rangeHeader, totalSize);
@@ -142,7 +157,8 @@ public class DownloadController {
     long end = range[1];
     long length = end - offset + 1;
 
-    InputStream stream = downloadService.streamRange(bucketId, objectKey, offset, length, principal);
+    InputStream stream =
+        downloadService.streamRange(bucketId, objectKey, offset, length, principal);
     headers.add(HttpHeaders.CONTENT_RANGE, "bytes " + offset + "-" + end + "/" + totalSize);
 
     return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
@@ -153,17 +169,16 @@ public class DownloadController {
   }
 
   private long[] parseRangeHeader(String rangeHeader, long totalSize) {
-    if (!rangeHeader.startsWith("bytes=")) return new long[]{0, totalSize - 1};
+    if (!rangeHeader.startsWith("bytes=")) return new long[] {0, totalSize - 1};
     String range = rangeHeader.substring(6);
     String[] parts = range.split("-");
     if (parts[0].isEmpty()) {
       long suffix = Long.parseLong(parts[1]);
-      return new long[]{totalSize - suffix, totalSize - 1};
+      return new long[] {totalSize - suffix, totalSize - 1};
     }
     long start = Long.parseLong(parts[0]);
-    long end = (parts.length > 1 && !parts[1].isEmpty())
-        ? Long.parseLong(parts[1]) : totalSize - 1;
-    return new long[]{start, Math.min(end, totalSize - 1)};
+    long end = (parts.length > 1 && !parts[1].isEmpty()) ? Long.parseLong(parts[1]) : totalSize - 1;
+    return new long[] {start, Math.min(end, totalSize - 1)};
   }
 
   // ============================================================
@@ -185,7 +200,8 @@ public class DownloadController {
 
   private MediaType parseMediaType(String contentType) {
     try {
-      return contentType != null ? MediaType.parseMediaType(contentType)
+      return contentType != null
+          ? MediaType.parseMediaType(contentType)
           : MediaType.APPLICATION_OCTET_STREAM;
     } catch (Exception e) {
       return MediaType.APPLICATION_OCTET_STREAM;

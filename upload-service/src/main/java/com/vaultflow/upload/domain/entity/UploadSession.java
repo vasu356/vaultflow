@@ -10,10 +10,15 @@ import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "upload_sessions")
-@Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class UploadSession {
 
-  @Id @GeneratedValue(strategy = GenerationType.UUID)
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
   private UUID id;
 
   @Column(name = "bucket_id", nullable = false)
@@ -71,7 +76,9 @@ public class UploadSession {
   private Instant updatedAt = Instant.now();
 
   @PreUpdate
-  void onUpdate() { this.updatedAt = Instant.now(); }
+  void onUpdate() {
+    this.updatedAt = Instant.now();
+  }
 
   public boolean isExpired() {
     return Instant.now().isAfter(this.expiresAt);

@@ -1,23 +1,24 @@
 package com.vaultflow.auth.config;
 
+import java.io.Serializable;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Types;
+import java.util.Objects;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.usertype.UserType;
-
-import java.io.Serializable;
-import java.sql.*;
-import java.util.Objects;
 import org.postgresql.util.PGobject;
 
 /**
  * Custom Hibernate UserType for PostgreSQL INET columns.
  *
- * <p>Maps Java {@link String} to PostgreSQL {@code inet} type. This avoids changing the
- * database schema (which uses INET for {@code last_login_ip} and {@code ip_address}) while
- * keeping the Java entity fields as simple Strings.
+ * <p>Maps Java {@link String} to PostgreSQL {@code inet} type. This avoids changing the database
+ * schema (which uses INET for {@code last_login_ip} and {@code ip_address}) while keeping the Java
+ * entity fields as simple Strings.
  *
- * <p>PostgreSQL's JDBC driver returns INET values as {@link PGobject} with type "inet".
- * This type extracts the string representation for Java and converts back to a string
- * for storage.
+ * <p>PostgreSQL's JDBC driver returns INET values as {@link PGobject} with type "inet". This type
+ * extracts the string representation for Java and converts back to a string for storage.
  */
 public class InetType implements UserType<String> {
 
@@ -42,8 +43,9 @@ public class InetType implements UserType<String> {
   }
 
   @Override
-  public String nullSafeGet(ResultSet rs, int position, SharedSessionContractImplementor session,
-      Object owner) throws SQLException {
+  public String nullSafeGet(
+      ResultSet rs, int position, SharedSessionContractImplementor session, Object owner)
+      throws SQLException {
     Object value = rs.getObject(position);
     if (value == null) {
       return null;
@@ -56,8 +58,9 @@ public class InetType implements UserType<String> {
   }
 
   @Override
-  public void nullSafeSet(PreparedStatement st, String value, int index,
-      SharedSessionContractImplementor session) throws SQLException {
+  public void nullSafeSet(
+      PreparedStatement st, String value, int index, SharedSessionContractImplementor session)
+      throws SQLException {
     if (value == null) {
       st.setNull(index, Types.OTHER, "inet");
     } else {

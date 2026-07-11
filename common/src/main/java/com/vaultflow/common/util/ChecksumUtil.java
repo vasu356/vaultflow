@@ -10,14 +10,13 @@ import org.apache.commons.codec.binary.Hex;
 /**
  * Utility for computing SHA-256 checksums during upload and verification.
  *
- * <p>Why SHA-256? MD5 and SHA-1 have collision vulnerabilities. SHA-256 provides:
- * - Collision resistance suitable for deduplication keys
- * - Sufficient entropy for 5B+ objects without collision risk
- * - Industry standard (used by S3 ETag for multipart, Git object store, Docker layers)
+ * <p>Why SHA-256? MD5 and SHA-1 have collision vulnerabilities. SHA-256 provides: - Collision
+ * resistance suitable for deduplication keys - Sufficient entropy for 5B+ objects without collision
+ * risk - Industry standard (used by S3 ETag for multipart, Git object store, Docker layers)
  *
- * <p>Implementation note: We use DigestInputStream to compute hash in a single streaming pass
- * over the upload data, avoiding loading the file into memory. This is critical for files
- * exceeding JVM heap size.
+ * <p>Implementation note: We use DigestInputStream to compute hash in a single streaming pass over
+ * the upload data, avoiding loading the file into memory. This is critical for files exceeding JVM
+ * heap size.
  */
 public final class ChecksumUtil {
 
@@ -37,9 +36,7 @@ public final class ChecksumUtil {
     }
   }
 
-  /**
-   * Compute SHA-256 of the given string (used for small metadata like tokens).
-   */
+  /** Compute SHA-256 of the given string (used for small metadata like tokens). */
   public static String sha256Hex(String data) {
     return sha256Hex(data.getBytes(java.nio.charset.StandardCharsets.UTF_8));
   }
@@ -87,10 +84,6 @@ public final class ChecksumUtil {
     if (sha256Hex == null || sha256Hex.length() < 6) {
       throw new IllegalArgumentException("Invalid SHA-256 hex: " + sha256Hex);
     }
-    return sha256Hex.substring(0, 3)
-        + "/"
-        + sha256Hex.substring(3, 6)
-        + "/"
-        + sha256Hex;
+    return sha256Hex.substring(0, 3) + "/" + sha256Hex.substring(3, 6) + "/" + sha256Hex;
   }
 }

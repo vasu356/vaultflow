@@ -7,10 +7,15 @@ import lombok.*;
 
 @Entity
 @Table(name = "objects")
-@Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class StoredObject {
 
-  @Id @GeneratedValue(strategy = GenerationType.UUID)
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
   private UUID id;
 
   @Column(name = "bucket_id", nullable = false)
@@ -40,11 +45,12 @@ public class StoredObject {
   @Builder.Default
   private Instant updatedAt = Instant.now();
 
-  @Version
-  private Long version;
+  @Version private Long version;
 
   @PreUpdate
-  void onUpdate() { this.updatedAt = Instant.now(); }
+  void onUpdate() {
+    this.updatedAt = Instant.now();
+  }
 
   public void softDelete() {
     this.isDeleted = true;

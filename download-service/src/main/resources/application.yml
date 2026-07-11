@@ -11,7 +11,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/vaultflow}
     username: ${DB_USERNAME:vaultflow}
-    password: ${DB_PASSWORD:vaultflow}
+    password: ${DB_PASSWORD}
     hikari:
       pool-name: DownloadHikariPool
       maximum-pool-size: 20
@@ -40,7 +40,7 @@ vaultflow:
   storage:
     base-dir: ${STORAGE_BASE_DIR:/data/vaultflow/objects}
   signed-url:
-    secret: ${SIGNED_URL_SECRET:change-me-in-production}
+    secret: ${SIGNED_URL_SECRET}
   download:
     base-url: ${DOWNLOAD_BASE_URL:http://localhost:8083}
   jwt:

@@ -1,7 +1,5 @@
 package com.vaultflow.notification.config;
 
-import com.vaultflow.common.event.AuditEvent;
-import com.vaultflow.common.event.FileProcessedEvent;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -44,9 +42,9 @@ public class NotificationKafkaConfig {
   }
 
   /**
-   * Generic consumer factory used for both audit and processed event consumers.
-   * Uses Object as value type so both AuditEvent and FileProcessedEvent can be
-   * deserialized by the same factory (type determined by topic).
+   * Generic consumer factory used for both audit and processed event consumers. Uses Object as
+   * value type so both AuditEvent and FileProcessedEvent can be deserialized by the same factory
+   * (type determined by topic).
    */
   @Bean
   public ConsumerFactory<String, Object> notificationConsumerFactory() {
@@ -64,8 +62,8 @@ public class NotificationKafkaConfig {
   }
 
   /**
-   * The bean name "auditKafkaListenerContainerFactory" matches the containerFactory
-   * attribute in AuditEventConsumer's @KafkaListener annotations.
+   * The bean name "auditKafkaListenerContainerFactory" matches the containerFactory attribute in
+   * AuditEventConsumer's @KafkaListener annotations.
    */
   @Bean
   public ConcurrentKafkaListenerContainerFactory<String, Object>

@@ -41,9 +41,9 @@ import org.slf4j.LoggerFactory;
  * }
  * </pre>
  *
- * <p>Resource services (upload, download, admin, metadata) create this provider with
- * {@code privateKey = null} — they can validate tokens but cannot sign new ones.
- * Only auth-service has the private key and can sign tokens.
+ * <p>Resource services (upload, download, admin, metadata) create this provider with {@code
+ * privateKey = null} — they can validate tokens but cannot sign new ones. Only auth-service has the
+ * private key and can sign tokens.
  */
 public class JwtTokenProvider {
 
@@ -58,14 +58,12 @@ public class JwtTokenProvider {
   public static final String TOKEN_TYPE_REFRESH = "refresh";
 
   private final PrivateKey privateKey;
-  final PublicKey publicKey;  // package-visible for JWKS endpoint
+  final PublicKey publicKey; // package-visible for JWKS endpoint
   private final long accessTokenExpirySeconds;
   private final long refreshTokenExpirySeconds;
   private final String issuer;
 
-  /**
-   * Create a JwtTokenProvider with both keys (auth-service — can sign and validate).
-   */
+  /** Create a JwtTokenProvider with both keys (auth-service — can sign and validate). */
   public JwtTokenProvider(
       PrivateKey privateKey,
       PublicKey publicKey,
@@ -79,9 +77,7 @@ public class JwtTokenProvider {
     this.issuer = issuer;
   }
 
-  /**
-   * Create a JwtTokenProvider with only a public key (resource services — can validate only).
-   */
+  /** Create a JwtTokenProvider with only a public key (resource services — can validate only). */
   public JwtTokenProvider(
       PublicKey publicKey,
       long accessTokenExpirySeconds,
@@ -102,7 +98,13 @@ public class JwtTokenProvider {
 
   public String generateRefreshToken(String userId, String email, String orgId, String role) {
     return buildToken(
-        userId, email, orgId, role, List.of("refresh"), refreshTokenExpirySeconds, TOKEN_TYPE_REFRESH);
+        userId,
+        email,
+        orgId,
+        role,
+        List.of("refresh"),
+        refreshTokenExpirySeconds,
+        TOKEN_TYPE_REFRESH);
   }
 
   private String buildToken(
@@ -139,8 +141,8 @@ public class JwtTokenProvider {
   }
 
   /**
-   * Parse and validate a JWT. Returns claims on success. Throws JwtException subtypes on failure
-   * — callers should catch JwtException, not individual subtypes, for forward-compatibility.
+   * Parse and validate a JWT. Returns claims on success. Throws JwtException subtypes on failure —
+   * callers should catch JwtException, not individual subtypes, for forward-compatibility.
    */
   public Claims validateAndExtract(String token) {
     try {

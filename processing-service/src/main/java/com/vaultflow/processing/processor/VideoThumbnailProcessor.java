@@ -18,12 +18,12 @@ import org.springframework.stereotype.Component;
 /**
  * Video thumbnail processor.
  *
- * <p>Production: Integrate FFmpeg via ProcessBuilder to extract frame at 1s mark:
- * {@code ffmpeg -i input.mp4 -ss 00:00:01 -vframes 1 -vf scale=300:300 output.jpg}
+ * <p>Production: Integrate FFmpeg via ProcessBuilder to extract frame at 1s mark: {@code ffmpeg -i
+ * input.mp4 -ss 00:00:01 -vframes 1 -vf scale=300:300 output.jpg}
  *
- * <p>Simulation: Generates a placeholder thumbnail image with video metadata overlay.
- * Full FFmpeg integration requires FFmpeg binary in the container image (multi-stage Dockerfile).
- * The interface is identical — swap the implementation without changing the orchestrator.
+ * <p>Simulation: Generates a placeholder thumbnail image with video metadata overlay. Full FFmpeg
+ * integration requires FFmpeg binary in the container image (multi-stage Dockerfile). The interface
+ * is identical — swap the implementation without changing the orchestrator.
  */
 @Component
 @RequiredArgsConstructor
@@ -37,8 +37,8 @@ public class VideoThumbnailProcessor {
 
   public FileProcessedEvent process(FileUploadedEvent event) {
     try {
-      String thumbnailKey = "thumbnails/" + ChecksumUtil.toStoragePath(
-          event.checksumSha256()) + ".video-thumb.jpg";
+      String thumbnailKey =
+          "thumbnails/" + ChecksumUtil.toStoragePath(event.checksumSha256()) + ".video-thumb.jpg";
       Path thumbnailPath = Paths.get(storageBaseDir, thumbnailKey);
       Files.createDirectories(thumbnailPath.getParent());
 
@@ -50,21 +50,29 @@ public class VideoThumbnailProcessor {
       g.setColor(Color.WHITE);
       g.setFont(new Font("Arial", Font.BOLD, 16));
       g.drawString("VIDEO", 120, 140);
-      g.drawString(event.objectKey().substring(Math.max(0, event.objectKey().length() - 20)), 20, 170);
+      g.drawString(
+          event.objectKey().substring(Math.max(0, event.objectKey().length() - 20)), 20, 170);
       g.dispose();
       ImageIO.write(img, "JPEG", thumbnailPath.toFile());
 
       meterRegistry.counter("processing.video.thumbnails.generated").increment();
-      return FileProcessedEvent.success(event.objectVersionId(), event.objectId(),
-          event.bucketId(), event.orgId(),
+      return FileProcessedEvent.success(
+          event.objectVersionId(),
+          event.objectId(),
+          event.bucketId(),
+          event.orgId(),
           FileProcessedEvent.ProcessingType.VIDEO_THUMBNAIL,
           Map.of("thumbnailKey", thumbnailKey, "simulated", "true"));
 
     } catch (Exception e) {
       log.error("Video thumbnail failed: {}", e.getMessage(), e);
-      return FileProcessedEvent.failed(event.objectVersionId(), event.objectId(),
-          event.bucketId(), event.orgId(),
-          FileProcessedEvent.ProcessingType.VIDEO_THUMBNAIL, e.getMessage());
+      return FileProcessedEvent.failed(
+          event.objectVersionId(),
+          event.objectId(),
+          event.bucketId(),
+          event.orgId(),
+          FileProcessedEvent.ProcessingType.VIDEO_THUMBNAIL,
+          e.getMessage());
     }
   }
 }

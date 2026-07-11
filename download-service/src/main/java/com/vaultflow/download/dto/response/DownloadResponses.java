@@ -9,13 +9,25 @@ public final class DownloadResponses {
 
   @Builder
   public record SignedUrlResponse(
-      UUID id, String url, String token,
-      Instant expiresAt, Integer maxDownloads, Instant createdAt) {}
+      UUID id,
+      String url,
+      String token,
+      Instant expiresAt,
+      Integer maxDownloads,
+      Instant createdAt) {}
 
   @Builder
   public record ObjectMetadataResponse(
-      UUID versionId, UUID objectId, String objectKey, String contentType,
-      long sizeBytes, String etag, String checksumSha256,
-      int versionNumber, String processingStatus, String virusScanStatus,
-      String thumbnailKey, Instant createdAt) {}
+      UUID versionId,
+      UUID objectId,
+      String objectKey,
+      String contentType,
+      long sizeBytes,
+      String etag,
+      String checksumSha256,
+      int versionNumber,
+      String processingStatus,
+      String virusScanStatus,
+      String thumbnailKey,
+      Instant createdAt) {}
 }

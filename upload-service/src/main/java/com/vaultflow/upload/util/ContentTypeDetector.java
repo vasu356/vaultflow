@@ -9,9 +9,9 @@ import org.springframework.stereotype.Component;
  * Detects actual content type by inspecting file magic bytes via Apache Tika.
  *
  * <p>Why not trust client-provided Content-Type? Clients can (accidentally or maliciously) send
- * wrong content types. A .exe uploaded as image/png could bypass security controls downstream.
- * Tika reads the first few bytes (magic numbers) to determine the actual type, independent of
- * filename extension or client header.
+ * wrong content types. A .exe uploaded as image/png could bypass security controls downstream. Tika
+ * reads the first few bytes (magic numbers) to determine the actual type, independent of filename
+ * extension or client header.
  *
  * <p>We still respect client-provided type when Tika cannot detect, falling back gracefully.
  */
@@ -32,8 +32,11 @@ public class ContentTypeDetector {
       String detected = TIKA.detect(data, filename);
       if (detected != null && !DEFAULT_TYPE.equals(detected)) {
         if (clientContentType != null && !clientContentType.equals(detected)) {
-          log.warn("Content type mismatch: client={} detected={} filename={}",
-              clientContentType, detected, filename);
+          log.warn(
+              "Content type mismatch: client={} detected={} filename={}",
+              clientContentType,
+              detected,
+              filename);
         }
         return detected;
       }

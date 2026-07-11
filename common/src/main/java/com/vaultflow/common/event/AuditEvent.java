@@ -6,11 +6,10 @@ import java.util.Map;
 /**
  * Published to Kafka topic {@code audit.events} for every significant user or system action.
  *
- * <p>Design: We use Kafka for audit events (not direct DB writes) because:
- * 1. Audit writes must not block or slow down the primary request path
- * 2. Audit events may need to fan out to SIEM, compliance systems, and multiple DB partitions
- * 3. Kafka provides guaranteed ordering within a partition (keyed by orgId)
- * 4. Events are retained for 30 days in Kafka for replay/recovery
+ * <p>Design: We use Kafka for audit events (not direct DB writes) because: 1. Audit writes must not
+ * block or slow down the primary request path 2. Audit events may need to fan out to SIEM,
+ * compliance systems, and multiple DB partitions 3. Kafka provides guaranteed ordering within a
+ * partition (keyed by orgId) 4. Events are retained for 30 days in Kafka for replay/recovery
  */
 public record AuditEvent(
     String eventId,

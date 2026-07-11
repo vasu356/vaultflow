@@ -21,10 +21,11 @@ logs/
 # Runtime
 *.pid
 
-# Environment
+# Environment — local secrets (never commit)
 .env
-.env.*
 *.env
+# Explicitly track the example file (no secrets, only documentation)
+!.env.example
 
 # Test artifacts
 login.json

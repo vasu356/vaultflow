@@ -73,29 +73,36 @@ public class UploadController {
    * Direct streaming upload. Client streams the file body directly — no multipart form encoding.
    * This is the most efficient path for files up to 100 MB.
    *
-   * <p>Request: PUT /api/v1/buckets/{bucketId}/objects/{key}
-   * Headers: Content-Type, Content-Length, X-Checksum-SHA256 (optional)
+   * <p>Request: PUT /api/v1/buckets/{bucketId}/objects/{key} Headers: Content-Type, Content-Length,
+   * X-Checksum-SHA256 (optional)
    */
   @PutMapping(value = "/buckets/{bucketId}/objects/{*objectKey}")
   @Operation(summary = "Upload a single-part object (streaming, up to 100MB)")
   public ResponseEntity<UploadResponse> uploadObject(
       @PathVariable("bucketId") UUID bucketId,
-      @RequestHeader(value = "Content-Type", defaultValue = "application/octet-stream") String contentType,
-      @RequestHeader(value = "Content-Length", required = false, defaultValue = "0") long contentLength,
+      @RequestHeader(value = "Content-Type", defaultValue = "application/octet-stream")
+          String contentType,
+      @RequestHeader(value = "Content-Length", required = false, defaultValue = "0")
+          long contentLength,
       @RequestHeader(value = "X-Checksum-SHA256", required = false) String checksum,
       @AuthenticationPrincipal VaultFlowUserPrincipal principal,
-      HttpServletRequest request) throws Exception {
+      HttpServletRequest request)
+      throws Exception {
 
     // Extract object key from the wildcard path (allows '/' in key names)
     String objectKey = extractObjectKey(request, "/api/v1/buckets/" + bucketId + "/objects/");
 
-    UploadResponse response = uploadService.uploadSinglePart(
-        bucketId, objectKey, request.getInputStream(),
-        contentLength, contentType, checksum, principal);
+    UploadResponse response =
+        uploadService.uploadSinglePart(
+            bucketId,
+            objectKey,
+            request.getInputStream(),
+            contentLength,
+            contentType,
+            checksum,
+            principal);
 
-    return ResponseEntity.ok()
-        .eTag(response.etag())
-        .body(response);
+    return ResponseEntity.ok().eTag(response.etag()).body(response);
   }
 
   // ============================================================
@@ -113,8 +120,8 @@ public class UploadController {
   }
 
   /**
-   * Upload a single part. Can be called in parallel for different part numbers.
-   * Part data is streamed directly from the request body (not multipart form).
+   * Upload a single part. Can be called in parallel for different part numbers. Part data is
+   * streamed directly from the request body (not multipart form).
    */
   @PutMapping("/uploads/{sessionId}/parts/{partNumber}")
   @Operation(summary = "Upload a single part of a multipart upload")
@@ -124,15 +131,14 @@ public class UploadController {
       @RequestHeader(value = "Content-Length", defaultValue = "0") long contentLength,
       @RequestHeader(value = "X-Checksum-SHA256", required = false) String checksum,
       @AuthenticationPrincipal VaultFlowUserPrincipal principal,
-      HttpServletRequest request) throws Exception {
+      HttpServletRequest request)
+      throws Exception {
 
-    PartUploadResponse response = uploadService.uploadPart(
-        sessionId, partNumber, request.getInputStream(),
-        contentLength, checksum, principal);
+    PartUploadResponse response =
+        uploadService.uploadPart(
+            sessionId, partNumber, request.getInputStream(), contentLength, checksum, principal);
 
-    return ResponseEntity.ok()
-        .eTag(response.etag())
-        .body(response);
+    return ResponseEntity.ok().eTag(response.etag()).body(response);
   }
 
   @PostMapping("/uploads/{sessionId}/complete")
@@ -178,9 +184,8 @@ public class UploadController {
   }
 
   /**
-   * Restore a soft-deleted object.
-   * Object key is passed as a query parameter to avoid Spring Boot 3 PathPatternParser
-   * restrictions on catch-all path variables followed by path segments.
+   * Restore a soft-deleted object. Object key is passed as a query parameter to avoid Spring Boot 3
+   * PathPatternParser restrictions on catch-all path variables followed by path segments.
    */
   @PostMapping("/buckets/{bucketId}/objects/restore")
   @Operation(summary = "Restore a soft-deleted object")

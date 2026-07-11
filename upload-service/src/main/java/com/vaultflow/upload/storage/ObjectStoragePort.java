@@ -10,8 +10,8 @@ import java.util.List;
  * specific storage implementation. This means we can swap LocalFileSystemStorage → S3Storage →
  * MinIOStorage without touching business logic.
  *
- * <p>Current implementation: {@link LocalFileSystemStorage}
- * Future: S3CompatibleStorage using AWS SDK v2 (async, non-blocking)
+ * <p>Current implementation: {@link LocalFileSystemStorage} Future: S3CompatibleStorage using AWS
+ * SDK v2 (async, non-blocking)
  *
  * <p>All methods are synchronous at this layer. The service layer wraps these in CompletableFuture
  * or virtual-thread-based async where needed.
@@ -19,13 +19,13 @@ import java.util.List;
 public interface ObjectStoragePort {
 
   /**
-   * Store an object and return the storage key (content-addressed path). If an object with the
-   * same key already exists (deduplication), the call is idempotent — returns the existing key
-   * without writing again.
+   * Store an object and return the storage key (content-addressed path). If an object with the same
+   * key already exists (deduplication), the call is idempotent — returns the existing key without
+   * writing again.
    *
-   * @param storageKey  content-addressed key (e.g. abc/def/abc123...)
-   * @param data        input stream of object data
-   * @param sizeBytes   expected size for pre-allocation and validation
+   * @param storageKey content-addressed key (e.g. abc/def/abc123...)
+   * @param data input stream of object data
+   * @param sizeBytes expected size for pre-allocation and validation
    * @param contentType MIME type for metadata
    * @return the storage key where the object was stored
    */
@@ -34,10 +34,10 @@ public interface ObjectStoragePort {
   /**
    * Store a part of a multipart upload to a temporary location.
    *
-   * @param sessionId  upload session ID
+   * @param sessionId upload session ID
    * @param partNumber 1-based part number
-   * @param data       chunk data stream
-   * @param sizeBytes  chunk size
+   * @param data chunk data stream
+   * @param sizeBytes chunk size
    * @return temporary storage key for the part
    */
   String storePart(String sessionId, int partNumber, InputStream data, long sizeBytes);
@@ -47,8 +47,8 @@ public interface ObjectStoragePort {
    * avoid loading entire file into memory. Deletes temporary part files on success.
    *
    * @param storageKey final content-addressed key
-   * @param sessionId  upload session to assemble
-   * @param partKeys   ordered list of temporary part keys
+   * @param sessionId upload session to assemble
+   * @param partKeys ordered list of temporary part keys
    * @return bytes written
    */
   long assembleParts(String storageKey, String sessionId, List<String> partKeys);
@@ -65,8 +65,8 @@ public interface ObjectStoragePort {
    * Retrieve a range of bytes from an object (HTTP Range request support).
    *
    * @param storageKey storage key
-   * @param offset     byte offset to start reading from
-   * @param length     number of bytes to read (-1 for remainder)
+   * @param offset byte offset to start reading from
+   * @param length number of bytes to read (-1 for remainder)
    * @return input stream of requested range
    */
   InputStream retrieveRange(String storageKey, long offset, long length);

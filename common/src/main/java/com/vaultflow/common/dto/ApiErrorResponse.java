@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Canonical error response envelope. Every service returns this shape on error, enabling clients
- * to handle errors uniformly regardless of which downstream service generated them.
+ * Canonical error response envelope. Every service returns this shape on error, enabling clients to
+ * handle errors uniformly regardless of which downstream service generated them.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record ApiErrorResponse(

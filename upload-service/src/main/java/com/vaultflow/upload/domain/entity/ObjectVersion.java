@@ -9,10 +9,15 @@ import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "object_versions")
-@Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ObjectVersion {
 
-  @Id @GeneratedValue(strategy = GenerationType.UUID)
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
   private UUID id;
 
   @Column(name = "object_id", nullable = false)

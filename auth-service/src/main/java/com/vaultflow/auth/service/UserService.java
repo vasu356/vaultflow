@@ -54,8 +54,7 @@ public class UserService {
     }
 
     // EDITOR can only be created by ADMIN or higher
-    if (requestedRole.getLevel() >= UserRole.ADMIN.getLevel()
-        && !inviter.isAdmin()) {
+    if (requestedRole.getLevel() >= UserRole.ADMIN.getLevel() && !inviter.isAdmin()) {
       throw new VaultFlowAccessDeniedException("Insufficient permissions to assign this role");
     }
 
@@ -84,7 +83,10 @@ public class UserService {
     user = userRepository.save(user);
     log.info(
         "User invited: userId={} email={} orgId={} role={}",
-        user.getId(), user.getEmail(), orgId, requestedRole);
+        user.getId(),
+        user.getEmail(),
+        orgId,
+        requestedRole);
 
     return toResponse(user);
   }

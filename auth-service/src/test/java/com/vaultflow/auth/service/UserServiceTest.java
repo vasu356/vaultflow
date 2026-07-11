@@ -41,18 +41,35 @@ class UserServiceTest {
   private User makeUser(UUID id, UserRole role) {
     Organization org = Organization.builder().id(orgId).name("Test").slug("test").build();
     return User.builder()
-        .id(id).organization(org).email("user@test.com").passwordHash("hash")
-        .fullName("Test User").role(role).status(UserStatus.ACTIVE).emailVerified(true).build();
+        .id(id)
+        .organization(org)
+        .email("user@test.com")
+        .passwordHash("hash")
+        .fullName("Test User")
+        .role(role)
+        .status(UserStatus.ACTIVE)
+        .emailVerified(true)
+        .build();
   }
 
   private VaultFlowUserPrincipal ownerPrincipal(UUID userId) {
-    return new VaultFlowUserPrincipal(userId.toString(), "owner@test.com",
-        orgId.toString(), "OWNER", List.of("read","write","delete","admin"), null);
+    return new VaultFlowUserPrincipal(
+        userId.toString(),
+        "owner@test.com",
+        orgId.toString(),
+        "OWNER",
+        List.of("read", "write", "delete", "admin"),
+        null);
   }
 
   private VaultFlowUserPrincipal adminPrincipal(UUID userId) {
-    return new VaultFlowUserPrincipal(userId.toString(), "admin@test.com",
-        orgId.toString(), "ADMIN", List.of("read","write","delete","admin"), null);
+    return new VaultFlowUserPrincipal(
+        userId.toString(),
+        "admin@test.com",
+        orgId.toString(),
+        "ADMIN",
+        List.of("read", "write", "delete", "admin"),
+        null);
   }
 
   @Nested
@@ -66,11 +83,13 @@ class UserServiceTest {
       UUID actorId = UUID.randomUUID();
       User target = makeUser(targetId, UserRole.VIEWER);
 
-      when(userRepository.findByIdAndOrganizationId(targetId, orgId)).thenReturn(Optional.of(target));
+      when(userRepository.findByIdAndOrganizationId(targetId, orgId))
+          .thenReturn(Optional.of(target));
       when(userRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-      UserResponse result = userService.updateRole(
-          targetId, new UpdateUserRoleRequest("EDITOR"), orgId, ownerPrincipal(actorId));
+      UserResponse result =
+          userService.updateRole(
+              targetId, new UpdateUserRoleRequest("EDITOR"), orgId, ownerPrincipal(actorId));
 
       assertThat(result.role()).isEqualTo("EDITOR");
     }
@@ -82,10 +101,13 @@ class UserServiceTest {
       UUID actorId = UUID.randomUUID();
       User target = makeUser(targetId, UserRole.EDITOR);
 
-      when(userRepository.findByIdAndOrganizationId(targetId, orgId)).thenReturn(Optional.of(target));
+      when(userRepository.findByIdAndOrganizationId(targetId, orgId))
+          .thenReturn(Optional.of(target));
 
-      assertThatThrownBy(() -> userService.updateRole(
-          targetId, new UpdateUserRoleRequest("OWNER"), orgId, adminPrincipal(actorId)))
+      assertThatThrownBy(
+              () ->
+                  userService.updateRole(
+                      targetId, new UpdateUserRoleRequest("OWNER"), orgId, adminPrincipal(actorId)))
           .isInstanceOf(VaultFlowAccessDeniedException.class)
           .hasMessageContaining("OWNER");
     }
@@ -98,8 +120,10 @@ class UserServiceTest {
 
       when(userRepository.findByIdAndOrganizationId(actorId, orgId)).thenReturn(Optional.of(self));
 
-      assertThatThrownBy(() -> userService.updateRole(
-          actorId, new UpdateUserRoleRequest("VIEWER"), orgId, adminPrincipal(actorId)))
+      assertThatThrownBy(
+              () ->
+                  userService.updateRole(
+                      actorId, new UpdateUserRoleRequest("VIEWER"), orgId, adminPrincipal(actorId)))
           .isInstanceOf(VaultFlowAccessDeniedException.class)
           .hasMessageContaining("own role");
     }
@@ -113,8 +137,10 @@ class UserServiceTest {
 
       when(userRepository.findByIdAndOrganizationId(ownerId, orgId)).thenReturn(Optional.of(owner));
 
-      assertThatThrownBy(() -> userService.updateRole(
-          ownerId, new UpdateUserRoleRequest("ADMIN"), orgId, ownerPrincipal(actorId)))
+      assertThatThrownBy(
+              () ->
+                  userService.updateRole(
+                      ownerId, new UpdateUserRoleRequest("ADMIN"), orgId, ownerPrincipal(actorId)))
           .isInstanceOf(VaultFlowAccessDeniedException.class)
           .hasMessageContaining("owner");
     }
@@ -131,7 +157,8 @@ class UserServiceTest {
       UUID actorId = UUID.randomUUID();
       User target = makeUser(targetId, UserRole.EDITOR);
 
-      when(userRepository.findByIdAndOrganizationId(targetId, orgId)).thenReturn(Optional.of(target));
+      when(userRepository.findByIdAndOrganizationId(targetId, orgId))
+          .thenReturn(Optional.of(target));
       when(userRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
       userService.deactivateUser(targetId, orgId, ownerPrincipal(actorId));

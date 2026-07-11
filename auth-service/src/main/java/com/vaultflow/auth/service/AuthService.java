@@ -11,16 +11,12 @@ import com.vaultflow.auth.domain.repository.UserRepository;
 import com.vaultflow.auth.dto.request.AuthRequests.LoginRequest;
 import com.vaultflow.auth.dto.request.AuthRequests.RefreshTokenRequest;
 import com.vaultflow.auth.dto.request.AuthRequests.RegisterOrganizationRequest;
-import com.vaultflow.auth.dto.response.AuthResponses.OrganizationResponse;
 import com.vaultflow.auth.dto.response.AuthResponses.TokenResponse;
 import com.vaultflow.auth.dto.response.AuthResponses.UserResponse;
 import com.vaultflow.common.exception.ConflictException;
-import com.vaultflow.common.exception.ResourceNotFoundException;
 import com.vaultflow.common.exception.VaultFlowException;
 import com.vaultflow.common.security.JwtTokenProvider;
 import com.vaultflow.common.util.ChecksumUtil;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Instant;
 import java.util.List;
@@ -33,16 +29,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Core authentication service. Owns:
- * - Organization + user registration (atomic: org + user in one transaction)
- * - Login with brute-force protection
- * - JWT access + refresh token issuance
- * - Token rotation with theft detection
- * - Logout (single device) and logout-all-devices
+ * Core authentication service. Owns: - Organization + user registration (atomic: org + user in one
+ * transaction) - Login with brute-force protection - JWT access + refresh token issuance - Token
+ * rotation with theft detection - Logout (single device) and logout-all-devices
  *
  * <p>Design: We prefer @Transactional at service layer (not repository layer) to ensure atomicity
- * spans multiple repository operations. The registration flow creates org + user + emits audit event
- * — all or nothing.
+ * spans multiple repository operations. The registration flow creates org + user + emits audit
+ * event — all or nothing.
  */
 @Service
 @RequiredArgsConstructor
@@ -72,15 +65,11 @@ public class AuthService {
     log.info("Registering organization: slug={} email={}", req.organizationSlug(), req.email());
 
     if (orgRepository.existsBySlug(req.organizationSlug())) {
-      throw new ConflictException(
-          "Organization slug already taken: " + req.organizationSlug());
+      throw new ConflictException("Organization slug already taken: " + req.organizationSlug());
     }
 
     Organization org =
-        Organization.builder()
-            .name(req.organizationName())
-            .slug(req.organizationSlug())
-            .build();
+        Organization.builder().name(req.organizationName()).slug(req.organizationSlug()).build();
     org = orgRepository.save(org);
 
     User owner =
@@ -96,10 +85,7 @@ public class AuthService {
     owner = userRepository.save(owner);
 
     meterRegistry.counter("auth.registrations.total").increment();
-    log.info(
-        "Organization registered: orgId={} userId={}",
-        org.getId(),
-        owner.getId());
+    log.info("Organization registered: orgId={} userId={}", org.getId(), owner.getId());
 
     return issueTokens(owner, ipAddress);
   }
@@ -115,7 +101,9 @@ public class AuthService {
             .findActiveByEmail(req.email().toLowerCase(), UserStatus.ACTIVE)
             .orElseThrow(
                 () -> {
-                  meterRegistry.counter("auth.login.failures", "reason", "user_not_found").increment();
+                  meterRegistry
+                      .counter("auth.login.failures", "reason", "user_not_found")
+                      .increment();
                   // Return same error as bad password to prevent user enumeration
                   return new VaultFlowException(
                       "Invalid credentials", HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS");
@@ -157,10 +145,13 @@ public class AuthService {
 
   /**
    * Refresh token rotation strategy:
-   * 1. Validate the incoming refresh token
-   * 2. If already revoked → revoke entire family (theft detection) → 401
-   * 3. If valid → revoke old token, issue new access + refresh token pair
-   * 4. New refresh token inherits same family_id (enables later theft detection)
+   *
+   * <ol>
+   *   <li>Validate the incoming refresh token
+   *   <li>If already revoked → revoke entire family (theft detection) → 401
+   *   <li>If valid → revoke old token, issue new access + refresh token pair
+   *   <li>New refresh token inherits same family_id (enables later theft detection)
+   * </ol>
    *
    * <p>Why revoke the old token rather than keeping it? Rotation limits the window of token reuse
    * after a leak. If an attacker captures a refresh token and uses it after the legitimate user has
@@ -213,9 +204,7 @@ public class AuthService {
   @Transactional
   public void logout(String refreshToken, String accessTokenJti) {
     String tokenHash = ChecksumUtil.sha256Hex(refreshToken);
-    refreshTokenRepository
-        .findByTokenHash(tokenHash)
-        .ifPresent(t -> t.revoke("LOGOUT"));
+    refreshTokenRepository.findByTokenHash(tokenHash).ifPresent(t -> t.revoke("LOGOUT"));
 
     // Blacklist access token JTI in Redis until it naturally expires
     if (accessTokenJti != null) {
@@ -277,7 +266,8 @@ public class AuthService {
             user.getCreatedAt(),
             user.getLastLoginAt());
 
-    return TokenResponse.of(accessToken, rawRefreshToken, ACCESS_TOKEN_EXPIRY_SECONDS, userResponse);
+    return TokenResponse.of(
+        accessToken, rawRefreshToken, ACCESS_TOKEN_EXPIRY_SECONDS, userResponse);
   }
 
   private List<String> scopesForRole(UserRole role) {
