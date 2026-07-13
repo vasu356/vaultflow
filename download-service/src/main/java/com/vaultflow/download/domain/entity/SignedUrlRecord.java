@@ -37,9 +37,9 @@ public class SignedUrlRecord {
   private Integer downloadCount = 0;
 
   /**
-   * PostgreSQL INET column. Hibernate cannot bind a plain String to INET via setString().
-   * InetType wraps the value in a PGobject with type="inet" so the JDBC driver sends a
-   * properly typed parameter that PostgreSQL accepts.
+   * PostgreSQL INET column. Hibernate cannot bind a plain String to INET via setString(). InetType
+   * wraps the value in a PGobject with type="inet" so the JDBC driver sends a properly typed
+   * parameter that PostgreSQL accepts.
    */
   @Column(name = "allowed_ip", columnDefinition = "inet")
   @Type(InetType.class)

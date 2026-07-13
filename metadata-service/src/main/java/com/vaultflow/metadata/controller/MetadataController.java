@@ -47,8 +47,7 @@ public class MetadataController {
       @PathVariable("bucketId") UUID bucketId,
       @PathVariable("objectKey") String objectKey,
       @AuthenticationPrincipal VaultFlowUserPrincipal principal) {
-    return ResponseEntity.ok(
-        metadataService.getObjectMetadata(bucketId, objectKey, principal));
+    return ResponseEntity.ok(metadataService.getObjectMetadata(bucketId, objectKey, principal));
   }
 
   @GetMapping("/buckets/{bucketId}/object/versions")

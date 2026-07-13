@@ -28,7 +28,7 @@ public final class AuthResponses {
       UUID orgId,
       String orgSlug,
       String orgName,
-      boolean emailVerified,
+      Boolean emailVerified,
       Instant createdAt,
       Instant lastLoginAt) {}
 
