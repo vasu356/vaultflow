@@ -1,7 +1,7 @@
 # ── Build stage ────────────────────────────────────────────────────────────
 # maven:3.9.6-eclipse-temurin-21-alpine has BOTH Maven 3.9 AND JDK 21.
 # Your local Java 25 is NOT used here — compilation always uses JDK 21.
-FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
+FROM maven:3.9.15-eclipse-temurin-26-alpine AS builder
 WORKDIR /build
 
 # 1. Copy the root pom.xml
