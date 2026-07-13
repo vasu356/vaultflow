@@ -15,12 +15,6 @@ spring:
     hikari:
       pool-name: ProcessingHikariPool
       maximum-pool-size: 10
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    open-in-view: false
-  flyway:
-    enabled: false
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:

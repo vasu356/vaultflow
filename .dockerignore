@@ -1,0 +1,32 @@
+# Compiled output — never needed in build context; local mvn package pollutes context
+target/
+**/target/
+*.class
+
+# Version control
+.git/
+.gitignore
+
+# CI / GitHub Actions — not needed inside the image
+.github/
+
+# Documentation — not needed inside the image
+docs/
+*.md
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+
+# Environment and secrets
+.env
+*.env
+keys/*.pem
+keys/*.jks
+keys/*.p12
+
+# Logs and coverage
+*.log
+logs/
+coverage/

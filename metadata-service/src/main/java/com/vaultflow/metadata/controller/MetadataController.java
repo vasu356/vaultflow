@@ -28,24 +28,34 @@ public class MetadataController {
 
   private final MetadataService metadataService;
 
-  @GetMapping("/buckets/{bucketId}/objects/{*objectKey}")
+  @GetMapping("/buckets/{bucketId}/objects")
   @Operation(summary = "List objects in a bucket with optional prefix filter")
   public ResponseEntity<PageResponse<Map<String, Object>>> listObjects(
       @PathVariable("bucketId") UUID bucketId,
-      @RequestParam("prefix") String prefix,
-      @RequestParam("continuationToken") String continuationToken,
-      @RequestParam("maxKeys") int maxKeys,
+      @RequestParam(value = "prefix", required = false, defaultValue = "") String prefix,
+      @RequestParam(value = "continuationToken", required = false) String continuationToken,
+      @RequestParam(value = "maxKeys", defaultValue = "1000") int maxKeys,
       @AuthenticationPrincipal VaultFlowUserPrincipal principal) {
     return ResponseEntity.ok(
         metadataService.listObjects(
             bucketId, prefix, continuationToken, Math.min(maxKeys, 1000), principal));
   }
 
+  @GetMapping("/buckets/{bucketId}/objects/{*objectKey}")
+  @Operation(summary = "Get metadata for a single object")
+  public ResponseEntity<Map<String, Object>> getObjectMetadata(
+      @PathVariable("bucketId") UUID bucketId,
+      @PathVariable("objectKey") String objectKey,
+      @AuthenticationPrincipal VaultFlowUserPrincipal principal) {
+    return ResponseEntity.ok(
+        metadataService.getObjectMetadata(bucketId, objectKey, principal));
+  }
+
   @GetMapping("/buckets/{bucketId}/object/versions")
   @Operation(summary = "List all versions of an object")
   public ResponseEntity<List<Map<String, Object>>> listVersions(
       @PathVariable("bucketId") UUID bucketId,
-      @PathVariable("objectKey") String objectKey,
+      @RequestParam("objectKey") String objectKey,
       @AuthenticationPrincipal VaultFlowUserPrincipal principal) {
     return ResponseEntity.ok(metadataService.listVersions(bucketId, objectKey, principal));
   }
@@ -54,7 +64,7 @@ public class MetadataController {
   @Operation(summary = "Update user-defined metadata and tags on an object")
   public ResponseEntity<Void> updateMetadata(
       @PathVariable("bucketId") UUID bucketId,
-      @PathVariable("objectKey") String objectKey,
+      @RequestParam("objectKey") String objectKey,
       @RequestBody Map<String, Map<String, String>> body,
       @AuthenticationPrincipal VaultFlowUserPrincipal principal) {
     metadataService.updateMetadata(

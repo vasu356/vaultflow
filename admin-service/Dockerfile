@@ -19,16 +19,17 @@ COPY metadata-service/pom.xml       metadata-service/pom.xml
 COPY notification-service/pom.xml   notification-service/pom.xml
 COPY admin-service/pom.xml          admin-service/pom.xml
 
-# 3. Download dependencies for common + this service only.
-#    Cached layer — only re-runs when any pom.xml changes.
-RUN mvn dependency:go-offline       -pl common,admin-service -am       --no-transfer-progress -q 2>&1 || true
-
-# 4. Copy source code for common + this service only
+# 3. Copy source code for common + this service only
 COPY common/src       common/src
 COPY admin-service/src  admin-service/src
 
-# 5. Build
-RUN mvn package       -pl common,admin-service -am       -DskipTests       --no-transfer-progress
+# 4. Build — BuildKit cache mount keeps ~/.m2 across builds without baking
+#    it into the image layer. Dependencies are only re-downloaded when missing.
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn package \
+        -pl common,admin-service -am \
+        -DskipTests \
+        --no-transfer-progress
 
 # ── Runtime stage ──────────────────────────────────────────────────────────
 FROM eclipse-temurin:21-jre-alpine AS runtime
@@ -40,5 +41,6 @@ RUN chown vaultflow:vaultflow app.jar
 USER vaultflow
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0 -XX:+UseZGC -Djava.security.egd=file:/dev/./urandom"
 EXPOSE 8087
-HEALTHCHECK --interval=20s --timeout=10s --start-period=120s --retries=6   CMD wget -q -O- http://localhost:8087/actuator/health || exit 1
+HEALTHCHECK --interval=20s --timeout=10s --start-period=120s --retries=6 \
+  CMD wget -q -O- http://localhost:8087/actuator/health || exit 1
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]

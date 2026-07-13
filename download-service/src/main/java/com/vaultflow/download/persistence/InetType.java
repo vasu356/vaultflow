@@ -1,4 +1,4 @@
-package com.vaultflow.auth.config;
+package com.vaultflow.download.persistence;
 
 import java.io.Serializable;
 import java.sql.PreparedStatement;

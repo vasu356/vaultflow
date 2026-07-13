@@ -17,7 +17,7 @@ public interface StoredObjectRepository extends JpaRepository<StoredObject, UUID
 
   @Query(
       "SELECT o FROM StoredObject o WHERE o.bucketId = :bucketId AND o.isDeleted = false"
-          + " AND (:prefix IS NULL OR o.objectKey LIKE :prefix%)")
+          + " AND (:prefix IS NULL OR o.objectKey LIKE CONCAT(:prefix, '%'))")
   Page<StoredObject> listObjects(
       @Param("bucketId") UUID bucketId, @Param("prefix") String prefix, Pageable pageable);
 
