@@ -32,7 +32,7 @@ RUN --mount=type=cache,target=/root/.m2 \
         --no-transfer-progress
 
 # ── Runtime stage ──────────────────────────────────────────────────────────
-FROM eclipse-temurin:21-jre-alpine AS runtime
+FROM eclipse-temurin:25-jre-alpine AS runtime
 RUN addgroup -S vaultflow && adduser -S -G vaultflow -u 1001 vaultflow
 RUN mkdir -p /data/vaultflow/objects && chown -R vaultflow:vaultflow /data
 WORKDIR /app
