@@ -40,7 +40,7 @@
         <flyway.version>10.12.0</flyway.version>
 
         <!-- Security -->
-        <jjwt.version>0.12.5</jjwt.version>
+        <jjwt.version>0.13.0</jjwt.version>
         <bouncycastle.version>1.78</bouncycastle.version>
 
         <!-- Cache -->
