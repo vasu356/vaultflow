@@ -327,8 +327,10 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 For detailed local development setup including JWT key sharing, running individual services, and debugging, see **[docs/LOCAL_DEVELOPMENT.md](docs/LOCAL_DEVELOPMENT.md)**.
 
 ```bash
-# Start only infrastructure (Postgres, Redis, Kafka)
+# Start only infrastructure (Postgres, Redis, Kafka + topic init)
+# kafka-init waits for Kafka health automatically via depends_on
 docker-compose up -d postgres redis zookeeper kafka kafka-init
+docker-compose wait kafka-init   # block until topics are created
 
 # Run a single service from source (faster iteration)
 cd auth-service
@@ -499,15 +501,17 @@ curl -X PUT "http://localhost:80/api/v1/buckets/3fa85f64-5717-4562-b3fc-2c963f66
   "objectId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "versionId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
   "objectKey": "reports/q4-2024.pdf",
+  "storageKey": "e3b/0c4/e3b0c44298fc1c149afb4c8996fb92427ae41e4649b934ca495991b7852b855",
   "sizeBytes": 2048576,
   "checksumSha256": "e3b0c44298fc1c149afb4c8996fb92427ae41e4649b934ca495991b7852b855",
   "etag": "\"e3b0c44298fc1c149afb4c8996fb9242\"",
   "contentType": "application/pdf",
   "isDuplicate": false,
-  "processingStatus": "PENDING",
   "uploadedAt": "2024-10-15T14:23:11.847Z"
 }
 ```
+
+> **Note:** `processingStatus` is not included in the upload response — the upload returns immediately before async processing begins. Query the Metadata API (`GET /api/v1/buckets/{id}/objects/{key}`) to get `processing_status` and `virus_scan_status` after upload.
 
 ---
 

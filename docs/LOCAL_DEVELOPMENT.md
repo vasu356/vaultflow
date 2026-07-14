@@ -21,11 +21,12 @@ cd vaultflow
 # Build all service images
 docker-compose build
 
-# Start infrastructure first (PostgreSQL, Redis, Kafka)
-docker-compose up -d postgres redis zookeeper kafka
+# Start infrastructure first (PostgreSQL, Redis, Kafka, and topic init)
+# kafka-init depends_on kafka with condition: service_healthy, so ordering is automatic
+docker-compose up -d postgres redis zookeeper kafka kafka-init
 
-# Wait ~30 seconds for Kafka to be ready, then create topics
-docker-compose up kafka-init
+# Wait for kafka-init to complete (it retries until Kafka is ready, then exits 0)
+docker-compose wait kafka-init
 
 # Start all application services
 docker-compose up -d auth-service upload-service download-service \
@@ -115,8 +116,8 @@ done
 
 # Open UIs
 open http://localhost:8081/swagger-ui.html   # Auth service API docs
-open http://localhost:3000                    # Grafana (admin/admin)
-open http://localhost:9090                    # Prometheus
+open http://localhost:3001                    # Grafana (admin/admin)
+open http://localhost:9091                    # Prometheus
 open http://localhost:16686                   # Jaeger tracing
 ```
 
@@ -199,7 +200,7 @@ docker-compose logs postgres | tail -20
 ### Kafka consumer lag is growing
 ```bash
 docker exec vaultflow-kafka kafka-consumer-groups \
-  --bootstrap-server localhost:9093 \
+  --bootstrap-server localhost:9094 \
   --describe --group processing-service
 # Fix: docker-compose restart processing-service
 ```

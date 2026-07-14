@@ -371,7 +371,7 @@ Object data is stored using SHA-256 content addressing with two-level directory 
 
 Two-level sharding (`000/000/sha256`) distributes files across ~16 million directory buckets, preventing inode exhaustion on ext4/XFS filesystems that degrade with millions of files in a single directory.
 
-The `storage_key` column in `object_versions` is the SHA-256 hash — both the lookup key and the dedup key. Two `ObjectVersion` rows with the same `storage_key` reference one physical file. `ref_count` tracks how many logical versions point to the same storage key; the file is deleted only when `ref_count` reaches 0.
+The `storage_key` column in `object_versions` is the content-addressed path derived from the SHA-256 hash — `sha256[0:3]/sha256[3:6]/sha256` (e.g. `abc/12/abc123...`). It is both the filesystem path and the dedup key. The raw SHA-256 is stored separately in `checksum_sha256` for integrity verification and is what the API returns as `checksumSha256`. Two `ObjectVersion` rows with the same `storage_key` reference one physical file. `ref_count` tracks how many logical versions point to the same storage key; the file is deleted only when `ref_count` reaches 0.
 
 ---
 

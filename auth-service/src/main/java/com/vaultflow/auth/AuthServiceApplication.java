@@ -2,6 +2,8 @@ package com.vaultflow.auth;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
@@ -15,8 +17,17 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * application.yml. This allows the Tomcat thread pool to handle I/O-bound auth operations (DB +
  * Redis) without blocking OS threads, dramatically increasing concurrent request throughput with no
  * code changes.
+ *
+ * <p>UserDetailsServiceAutoConfiguration is excluded because this service uses JWT-based
+ * authentication exclusively — Spring Security's in-memory user details service is never needed and
+ * would otherwise log a generated password on every startup.
+ *
+ * <p>RedisRepositoriesAutoConfiguration is excluded because this service uses StringRedisTemplate
+ * directly (TokenRevocationService), not Spring Data Redis repositories.
  */
-@SpringBootApplication(scanBasePackages = {"com.vaultflow.auth", "com.vaultflow.common"})
+@SpringBootApplication(
+    scanBasePackages = {"com.vaultflow.auth", "com.vaultflow.common"},
+    exclude = {UserDetailsServiceAutoConfiguration.class, RedisRepositoriesAutoConfiguration.class})
 @EnableScheduling
 public class AuthServiceApplication {
 

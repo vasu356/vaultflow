@@ -79,7 +79,8 @@
         <maven-surefire.version>3.2.5</maven-surefire.version>
         <maven-failsafe.version>3.2.5</maven-failsafe.version>
         <spotless.version>2.43.0</spotless.version>
-        <checkstyle.version>3.3.1</checkstyle.version>
+        <checkstyle.version>3.6.0</checkstyle.version>
+        <springdoc.version>2.5.0</springdoc.version>
         <jacoco.version>0.8.12</jacoco.version>
     </properties>
 
@@ -223,6 +224,13 @@
                 <artifactId>awaitility</artifactId>
                 <version>${awaitility.version}</version>
                 <scope>test</scope>
+            </dependency>
+
+            <!-- OpenAPI / SpringDoc -->
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -377,7 +385,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-checkstyle-plugin</artifactId>
-                    <version>3.6.0</version>
+                    <version>${checkstyle.version}</version>
                     <configuration>
                         <configLocation>config/checkstyle/checkstyle.xml</configLocation>
                         <consoleOutput>true</consoleOutput>
@@ -410,5 +418,21 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+
+        <!-- Plugins activated at root level run across the entire reactor.
+             Spotless and Checkstyle are code-quality plugins that must check
+             all modules — activating them here (not just in pluginManagement)
+             ensures `mvn spotless:check` and `mvn checkstyle:check` work
+             correctly from the root without requiring each module to opt in. -->
+        <plugins>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+            </plugin>
+        </plugins>
     </build>
 </project>

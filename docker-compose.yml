@@ -121,13 +121,20 @@ services:
     networks:
       - vaultflow-net
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
 
   # ── Kafka Topic Init ──────────────────────────────────────────────────────
   kafka-init:
     image: confluentinc/cp-kafka:7.6.1
     container_name: vaultflow-kafka-init
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
     networks:
       - vaultflow-net
     restart: "no"
@@ -258,6 +265,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/vaultflow
       DB_USERNAME: ${DB_USERNAME:-vaultflow}
@@ -333,6 +342,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/vaultflow
       DB_USERNAME: ${DB_USERNAME:-vaultflow}
@@ -366,6 +377,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/vaultflow
       DB_USERNAME: ${DB_USERNAME:-vaultflow}
@@ -398,6 +411,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/vaultflow
       DB_USERNAME: ${DB_USERNAME:-vaultflow}

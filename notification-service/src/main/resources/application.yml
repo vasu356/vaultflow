@@ -20,9 +20,9 @@ spring:
       max-lifetime: 1800000
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-    consumer:
-      auto-offset-reset: earliest
-      enable-auto-commit: false
+    # Consumer group IDs are set at the factory level in NotificationKafkaConfig.
+    # Two separate groups: notification-audit-service (audit.events)
+    #                  and notification-processing-service (file.processed)
 
 vaultflow:
   jwt:

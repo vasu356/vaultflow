@@ -34,7 +34,7 @@ spring:
       ddl-auto: validate  # Flyway owns schema; JPA validates only
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # dialect auto-detected from driver — no explicit setting needed in Spring Boot 3.x
         format_sql: false
         default_batch_fetch_size: 25  # Prevents N+1 for lazy collections
         jdbc:
@@ -115,4 +115,3 @@ logging:
     com.vaultflow: DEBUG
     org.springframework.security: INFO
     org.hibernate.SQL: INFO
-    org.hibernate.orm.jdbc.bind: TRACE

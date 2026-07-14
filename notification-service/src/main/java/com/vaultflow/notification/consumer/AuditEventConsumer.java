@@ -15,11 +15,11 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
 
 /**
- * Consumes audit events and file-processed events from Kafka.
+ * Consumes audit.events and file.processed events from Kafka.
  *
- * <p>Uses Object as the ConsumerRecord value type because the listener container factory
- * deserializes to Object (supporting multiple event types on the same factory). We then use Jackson
- * to convert the LinkedHashMap (default JSON deserialization) to the specific event type.
+ * <p>Each listener specifies the matching containerFactory bean that was created with the correct
+ * GROUP_ID_CONFIG at the factory level. The groupId attribute on @KafkaListener is kept for
+ * documentation clarity but the authoritative group is in the factory.
  */
 @Component
 @RequiredArgsConstructor
@@ -31,6 +31,10 @@ public class AuditEventConsumer {
   private static final ObjectMapper MAPPER =
       new ObjectMapper().registerModule(new JavaTimeModule());
 
+  /**
+   * Persists audit events to the audit_logs table. Uses auditKafkaListenerContainerFactory whose
+   * GROUP_ID_CONFIG is "notification-audit-service".
+   */
   @KafkaListener(
       topics = "audit.events",
       groupId = "notification-audit-service",
@@ -79,11 +83,16 @@ public class AuditEventConsumer {
     }
   }
 
+  /**
+   * Logs file processing results and would trigger webhook delivery. Uses
+   * processedKafkaListenerContainerFactory whose GROUP_ID_CONFIG is
+   * "notification-processing-service".
+   */
   @KafkaListener(
       topics = "file.processed",
       groupId = "notification-processing-service",
       concurrency = "2",
-      containerFactory = "auditKafkaListenerContainerFactory")
+      containerFactory = "processedKafkaListenerContainerFactory")
   public void consumeProcessedEvent(ConsumerRecord<String, Object> record, Acknowledgment ack) {
     try {
       FileProcessedEvent event = MAPPER.convertValue(record.value(), FileProcessedEvent.class);
@@ -96,7 +105,7 @@ public class AuditEventConsumer {
           event.objectVersionId(),
           event.processingType(),
           event.status());
-      // Webhook delivery would go here — for now log and ack
+      // Webhook delivery and notification fan-out would be implemented here
       ack.acknowledge();
     } catch (Exception e) {
       log.error("Failed to consume processed event: {}", e.getMessage(), e);

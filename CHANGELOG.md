@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Documentation Fixes
+- **`docs/LOCAL_DEVELOPMENT.md`**: Corrected Kafka external port from `9093` to `9094` (matches `docker-compose.yml` mapping `9094:9094`)
+- **`docs/LOCAL_DEVELOPMENT.md`**: Corrected Grafana URL from `localhost:3000` to `localhost:3001` and Prometheus from `localhost:9090` to `localhost:9091` (matches `docker-compose.yml` port mappings)
+- **`docs/LOCAL_DEVELOPMENT.md`**: Replaced ambiguous "wait ~30 seconds" kafka-init guidance with `docker-compose wait kafka-init`; `kafka-init` already depends on Kafka health so no manual timing is required
+- **`README.md`**: Removed `processingStatus` from the upload response example — `UploadResponse` DTO does not include that field; added note to query the Metadata API for processing status
+- **`README.md`**: Added `storageKey` (the content-addressed path) to the upload response example to match the actual `UploadResponse` record
+- **`README.md`**: Added `docker-compose wait kafka-init` to the local development infrastructure startup snippet
+- **`ARCHITECTURE.md`**: Corrected description of `storage_key`: it is the content-addressed path (`sha256[0:3]/sha256[3:6]/sha256`), not the raw SHA-256 hash; `checksum_sha256` holds the raw hash
+
 ### Planned
 - S3-compatible adapter for `ObjectStoragePort` (MinIO / AWS S3)
 - ClamAV TCP integration in `VirusScanProcessor`
